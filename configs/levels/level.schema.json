@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "level.schema.json",
+  "title": "AI Parkour Lab fixed level manifest",
+  "description": "Physics-neutral source data for a named, fixed parkour course. Loading and simulation are not implemented by this schema.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "id", "title", "order", "units", "spawn", "finish", "bounds", "obstacles"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "id": { "type": "string", "pattern": "^level-[0-9]{2}-[a-z0-9-]+$" },
+    "title": { "type": "string", "minLength": 1 },
+    "order": { "type": "integer", "minimum": 1 },
+    "summary": { "type": "string" },
+    "units": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["distance", "angle", "up_axis", "forward_axis"],
+      "properties": {
+        "distance": { "const": "m" },
+        "angle": { "const": "degree" },
+        "up_axis": { "const": "+z" },
+        "forward_axis": { "const": "+x" }
+      }
+    },
+    "spawn": { "$ref": "#/$defs/marker" },
+    "finish": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["position", "radius"],
+      "properties": {
+        "position": { "$ref": "#/$defs/vector3" },
+        "radius": { "type": "number", "exclusiveMinimum": 0 }
+      }
+    },
+    "bounds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["minimum", "maximum"],
+      "properties": {
+        "minimum": { "$ref": "#/$defs/vector3" },
+        "maximum": { "$ref": "#/$defs/vector3" }
+      }
+    },
+    "obstacles": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/obstacle" }
+    }
+  },
+  "$defs": {
+    "vector3": {
+      "type": "array",
+      "prefixItems": [{ "type": "number" }, { "type": "number" }, { "type": "number" }],
+      "minItems": 3,
+      "maxItems": 3
+    },
+    "marker": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["position", "yaw_degrees"],
+      "properties": {
+        "position": { "$ref": "#/$defs/vector3" },
+        "yaw_degrees": { "type": "number" }
+      }
+    },
+    "obstacle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "position", "size"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "kind": {
+          "enum": ["platform", "step", "gap", "spike_strip", "moving_platform", "wall", "rail", "rooftop"]
+        },
+        "position": { "$ref": "#/$defs/vector3" },
+        "size": { "$ref": "#/$defs/vector3" },
+        "rotation_degrees": { "type": "number", "default": 0 },
+        "motion": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["axis", "amplitude", "period_seconds"],
+          "properties": {
+            "axis": { "$ref": "#/$defs/vector3" },
+            "amplitude": { "type": "number", "minimum": 0 },
+            "period_seconds": { "type": "number", "exclusiveMinimum": 0 }
+          }
+        },
+        "hazard": { "type": "boolean", "default": false }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "kind": { "const": "moving_platform" } }, "required": ["kind"] },
+          "then": { "required": ["motion"] }
+        }
+      ]
+    }
+  }
+}

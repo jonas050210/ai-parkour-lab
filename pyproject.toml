@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ai-parkour-lab"
+version = "0.1.0"
+description = "Local-first research foundations for simulated humanoid parkour learning"
+readme = "README.md"
+requires-python = ">=3.12,<3.14"
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<10", "ruff>=0.9,<1", "jsonschema>=4.23,<5"]
+sim = ["mujoco>=3.16,<4"]
+training = ["mjlab==1.6.0"]
+web = ["fastapi>=0.115,<1", "uvicorn[standard]>=0.34,<1"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]
+
+# Optional integration extras are intentionally not installed by `.[dev]`.
+# Verify CUDA/PyTorch/driver compatibility on the target host before installing `.[training]`.

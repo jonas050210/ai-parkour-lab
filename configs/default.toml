@@ -1,0 +1,30 @@
+# Starter values for a future CLI. No application currently reads this file.
+# Values are conservative hypotheses, not tested training parameters.
+
+[project]
+name = "ai-parkour-lab"
+seed = 42
+runs_dir = "runs"
+levels_dir = "configs/levels"
+
+[simulation]
+backend = "mujoco_cpu" # later GPU candidate: "mjlab_mjwarp"
+headless = true
+num_worlds = 64 # pilot only; profile actual VRAM/RAM before increasing
+physics_timestep_seconds = 0.002
+control_decimation = 5
+
+[training]
+algorithm = "ppo"
+policy_initialization = "random"
+# Steps, batch sizes, network dimensions, and reward weights require Phase 1-3 evidence.
+
+[evaluation]
+seeds = [11, 23, 37]
+include_held_out_levels = true
+
+[storage]
+# Relative paths are resolved from the project root by the future application.
+write_episode_jsonl = true
+write_tensorboard = true
+save_replay_on_failure = true
