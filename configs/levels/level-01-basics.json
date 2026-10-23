@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "id": "level-01-basics",
+  "title": "First Steps",
+  "order": 1,
+  "summary": "A short, safe course for validating balance, contact, and forward progress before adding jumps or hazards.",
+  "units": {
+    "distance": "m",
+    "angle": "degree",
+    "up_axis": "+z",
+    "forward_axis": "+x"
+  },
+  "spawn": {
+    "position": [0.0, 0.0, 0.95],
+    "yaw_degrees": 0.0
+  },
+  "finish": {
+    "position": [8.0, 0.0, 0.95],
+    "radius": 0.8
+  },
+  "bounds": {
+    "minimum": [-2.0, -3.0, -1.0],
+    "maximum": [10.0, 3.0, 5.0]
+  },
+  "obstacles": [
+    {
+      "id": "runway",
+      "kind": "platform",
+      "position": [4.0, 0.0, -0.1],
+      "size": [12.0, 6.0, 0.2],
+      "hazard": false
+    },
+    {
+      "id": "low-step",
+      "kind": "step",
+      "position": [4.0, 0.0, 0.12],
+      "size": [0.6, 1.4, 0.24],
+      "hazard": false
+    }
+  ]
+}

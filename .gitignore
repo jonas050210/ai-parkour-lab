@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Local settings / environment secrets
+.env
+.env.*
+!.env.example
+
+# Experiment output: never commit trained weights, datasets, media, or event logs
+runs/
+data/
+checkpoints/
+logs/
+tensorboard/
+*.pt
+*.pth
+*.ckpt
+*.onnx
+*.mp4
+*.webm
+
+# Web frontend outputs (added in a later phase)
+node_modules/
+dist/
