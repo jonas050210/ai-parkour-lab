@@ -416,3 +416,36 @@ def test_harness_and_compare_accept_a_run_id_or_a_path(
     assert main(["--runs-dir", str(trained), "compare", "--run-a", "cli-run",
                  "--run-b", str(run_dir)]) == 0
     assert "level-01-basics" in capsys.readouterr().out
+
+
+def test_watch_refuses_a_headless_machine_without_killing_the_process(
+    trained: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Importing the MuJoCo viewer without a display exits the interpreter from C."""
+
+    monkeypatch.delenv("DISPLAY", raising=False)
+    monkeypatch.delenv("WAYLAND_DISPLAY", raising=False)
+    monkeypatch.setenv("MUJOCO_GL", "")
+    checkpoint = trained / "cli-run" / "checkpoints" / "latest.npz"
+    code = main(["watch", "--checkpoint", str(checkpoint), "--level", LEVEL])
+    assert code == 1
+    message = capsys.readouterr().err
+    assert "needs a display" in message
+    assert "dashboard" in message
+
+
+def test_watch_uses_the_checkpoint_dynamics(trained: Path) -> None:
+    """The GUI must build the same environment the checkpoint was trained in."""
+
+    from parkour_lab import cli
+
+    options = cli.build_parser().parse_args(
+        ["watch", "--checkpoint", str(trained / "cli-run" / "checkpoints" / "latest.npz"),
+         "--level", LEVEL]
+    )
+    cli._load_policy(options)
+    config = cli._checkpoint_env_config(options, LEVEL)
+    # The fixture trains with action_scale=0.3, smoothing=0.5 and a 4 s episode cap.
+    assert config.action_scale == pytest.approx(0.3)
+    assert config.action_smoothing == pytest.approx(0.5)
+    assert config.max_episode_seconds == pytest.approx(4.0)

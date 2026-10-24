@@ -636,6 +636,21 @@ def command_watch(args: argparse.Namespace) -> int:
 
     catalog = _catalog(args)
     level = catalog[args.level]
+    # Importing ``mujoco.viewer`` initialises GLFW, and MuJoCo answers a missing display by
+    # calling ``exit(1)`` from C - no Python exception, no cleanup, no message from us.  Check
+    # the display *before* importing it so a headless run fails with a useful hint instead.
+    backend = os.environ.get("MUJOCO_GL", "glfw")
+    has_display = bool(
+        os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")
+    )
+    if backend in ("glfw", "") and not has_display:
+        print(
+            "the native viewer needs a display (DISPLAY/WAYLAND_DISPLAY); none is set. "
+            "Use `parkour dashboard` and the browser replay instead, or set "
+            "MUJOCO_GL=egl on a machine with an EGL device.",
+            file=sys.stderr,
+        )
+        return 1
     try:
         import mujoco.viewer
     except Exception as exc:  # pragma: no cover - depends on the platform
@@ -644,7 +659,10 @@ def command_watch(args: argparse.Namespace) -> int:
     model = None
     if args.checkpoint:
         model = _load_policy(args)
-    env = ParkourEnv(level, EnvConfig(level_id=level.id, seed=args.seed))
+    # The viewer must show the dynamics the checkpoint was trained with, not the defaults:
+    # a 0.3 action scale or muscle actuation otherwise plays back as a different robot.
+    env_config = replace(_checkpoint_env_config(args, level.id), seed=args.seed)
+    env = ParkourEnv(level, env_config)
     observation, _ = env.reset(seed=args.seed, options={"deterministic": True})
     rng = np.random.default_rng(args.seed)
     control_dt = env.config.control_dt
