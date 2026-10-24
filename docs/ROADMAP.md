@@ -123,6 +123,23 @@ humanoid does not yet walk. The concrete diagnosis and the next experiments are 
 
 ## Immediate next steps
 
-1. Resolve the model/actuation and simulation operating-system choices in [DECISIONS.md](DECISIONS.md).
-2. Check the target host's CUDA driver, Python 3.12, available VRAM and disk/RAM before installing `mjlab`/Warp.
-3. Implement Phase 1's single-world model and tests; do not start a population or long training job.
+Phases 1–6 are built (see "Status as built"); the open work is empirical, and everything below is
+bounded to a few hours of the 2-vCPU host.
+
+1. **One fresh bounded run, fixed-loop code.** `walk-h` = the `walk-e` recipe, from a new policy,
+   `--steps 6000000 --stop-on-success --max-minutes 120`, 4 envs, control 50 Hz. Do not resume an old
+   checkpoint: action clipping, the auto-reset observation and the truncation bootstrap changed the
+   objective (see [STATUS.md](STATUS.md#what-this-means-for-the-next-run)).
+2. **Test the action box, not another reward weight.** `parkour inspect` shows the knee travels 17.2°
+   of its 138° range at `action_scale=0.25`, and the foot can only move *up* over the whole hip/knee/
+   ankle box — no crouch, no stride. Compare `--action-scale 0.5` and `EnvConfig.action_mode="range"`
+   on a short budget (≤ 1 M steps each) with `parkour diagnose` reporting flight fraction and
+   completion; keep whichever learns a *step*, not a faster hop.
+3. **Keep the diagnosis in the loop.** Every evaluation row should be readable as a sentence:
+   `parkour diagnose --json` already emits findings; the dashboard could show them next to a run.
+4. **Protect the held-out levels.** `level-21`/`level-22` stay untouched until `level-01` is completed.
+5. **Secondary optimisers stay optional and inert.** CEM and the Harness²-style assistant propose
+   bounded knobs; nothing applies a proposal automatically and neither may replace the physics engine,
+   the controller or PPO ([DECISIONS.md](DECISIONS.md), D-015).
+6. **Keep the documents true.** STATUS §4/§5 and the README's learning-status table are the contract
+   with the reader: update them in the same commit as the measurement they describe.

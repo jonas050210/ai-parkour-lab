@@ -72,11 +72,17 @@ Two dead ends are documented rather than hidden: a dense progress reward from st
 the agent stop falling by mostly standing — 7.6 s episodes, 21 % completion, still 0 % success — so
 the survival/progress ratio moves the plateau rather than passing it. A fourth (`walk-g`) adds an
 opt-in flight-phase penalty and a gait-credit floor for the observed hopping; it reaches the same
-55–59 % ceiling in fewer steps and was stopped early by the operator. Full numbers and the next
-experiments are in `docs/STATUS.md`. A scripted open-loop CPG search (2 000+ parameter combinations) also failed to
+55–59 % ceiling in fewer steps and was stopped early by the operator.
+
+`parkour diagnose` now reports what the policy physically does instead of leaving it to the eye: on
+the 5 M-step checkpoint, 5 seeds end `collapsed` at a 0.43 m pelvis height after 3.56 m, with both
+feet off the ground for 18–22 % of control steps (one seed manages 3 % completion). `parkour
+inspect` explains the hop: the action box is `standing pose ± 0.25 × half range`, so the knee travels
+17° of its 138° range and the foot can only move *up* — the policy cannot crouch or extend a stride.
+Full numbers and the next experiments are in `docs/STATUS.md`. A scripted open-loop CPG search (2 000+ parameter combinations) also failed to
 produce a stable gait on this morphology, so the remaining gap looks morphological/actuation-relevant
 as well as sample-budget-relevant. Concrete next steps are listed in
-[docs/STATUS.md](docs/STATUS.md#what-remains-unfinished).
+[docs/ROADMAP.md](docs/ROADMAP.md#immediate-next-steps).
 
 ## Architecture in one paragraph
 

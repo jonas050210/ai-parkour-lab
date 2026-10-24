@@ -58,8 +58,9 @@ about them.
 
 ## 4. Learning status
 
-Primary run: `runs/walk-e` (retained locally; `runs/` is git-ignored — regenerate with the command
-in §6).
+Primary run: `walk-e` (5 M steps). `runs/` is git-ignored and is not shipped with the repository,
+so the directory may not exist in a fresh checkout; every number below was measured on it and the
+command in §6 reproduces the protocol.
 
 Configuration: `level-01-basics` (6 m runway, one 10 cm step), 4 envs, 50 Hz control,
 `action_scale=0.3`, `action_smoothing=0.6`, reward annealed over the first 10 % of the run from
@@ -127,6 +128,38 @@ There is **no** walking gait and **no** completed level, so there is nothing to 
 beyond "the level-01 policy transfers weakly and falls over": the 20-level sweep ends in `fell_over`
 26/40 and `collapsed` 14/40. The two held-out levels have never been used for tuning.
 
+### What the failure diagnostics add
+
+`parkour diagnose --checkpoint runs/walk-e/checkpoints/latest.npz --eval-seeds 11 23 37 41 53`
+(one traced episode per seed, same `ParkourEnv` as training, no training state):
+
+| Seed | Completion | Distance | Speed | Flight phase | Ending |
+|---|---|---|---|---|---|
+| 11 | 58.6 % | 3.56 m | 0.94 m/s | 18 % | `collapsed` |
+| 23 | 58.3 % | 3.56 m | 0.92 m/s | 21 % | `collapsed` |
+| 37 | 59.5 % | 3.57 m | 1.02 m/s | 21 % | `collapsed` |
+| 41 | 59.4 % | 3.56 m | 0.98 m/s | 22 % | `collapsed` |
+| 53 | 3.0 % | 0.20 m | 0.24 m/s | 64 % | `collapsed` |
+
+Mean completion 47.7 %, mean speed 0.82 m/s, five `collapsed` endings at a pelvis height of 0.43 m.
+The findings are named, not eyeballed: `no_success`, `hopping` (both feet airborne for 29 % of control
+steps across the five episodes) and `collapse_height`; seed 53 also trips `seed_sensitivity` — the same
+deterministic policy ranges from 3 % to 60 % completion depending only on the initial state.
+
+`parkour inspect --level level-01-basics` explains *why* hopping is what the body does. The action
+box is `standing pose ± action_scale × half joint range`, so at the default `action_scale=0.25`:
+
+| Joint | Joint limits | Reachable at 0.25 | Reachable at 1.0 |
+|---|---|---|---|
+| `knee_l` | 2–140° | 2.0–19.2° (17.2°) | 2–71° |
+| `hip_pitch_l` | −115–45° | −20–20° | −69–69° |
+| `ankle_l` | −48–42° | −13.2–9.2° | −24.5–19.5° |
+
+Over every corner of the hip/knee/ankle action box at 0.25 the foot site can only move **up**
+(Δz 0.000–0.170 m): the policy cannot crouch, and therefore cannot push off or extend a stride.
+That is consistent with the learned behaviour — a shallow, symmetric hop — and it is a property of
+the action space, not of the reward weights that five recipes have now varied.
+
 > **Numbers from earlier runs are not comparable.** Until the evaluation loop was fixed (§5),
 > `parkour evaluate` reported an open-loop controller and understated every score by roughly 4×:
 > the same `walk-e` checkpoint scored 10.3 % before the fix and 45.5 % after it. Evaluation rows in
@@ -154,6 +187,22 @@ beyond "the level-01 policy transfers weakly and falls over": the 20-level sweep
 5. **Survival-first reward** (`walk-f`: fall penalty −20, survival weights doubled): the agent stopped
    falling by mostly standing. 7.64 s episodes instead of 3.55 s, 21.3 % completion instead of
    47.7 %, still 0 % success. Moving the survival/progress ratio only moves the plateau.
+
+### What this means for the next run
+
+Three fixes from this revision change the *learning path itself*, so a resumed `walk-e`/`walk-g`
+checkpoint does not test the current code:
+
+* sampled actions are now clipped into `[-1, 1]` before they are scored (24.6 % of action
+  dimensions in a trained rollout used to be clipped after PPO had stored their log-probability);
+* every rollout row is now the state the action was applied in (the first action of each episode
+  used to be chosen from the previous episode's final state);
+* time-limited episodes are bootstrapped from `V(s_final)` instead of being treated as terminal.
+
+The honest protocol for the next attempt is a **fresh** run of the `walk-e` recipe, bounded to
+5–6 M steps, with `--stop-on-success` and `--max-minutes` as the backstop. Two things are worth
+testing before that: `--action-scale 0.5` (or `EnvConfig.action_mode="range"`) so the knee has
+stride authority, and a longer `action_smoothing` ramp only if the wider box destabilises standing.
 
 ## 5. Bugs found and fixed (with regression tests)
 
@@ -206,7 +255,13 @@ parkour train --level level-01-basics --run-id walk-e --steps 5000000 --envs 4 \
 # inspect it
 parkour evaluate --checkpoint runs/walk-e/checkpoints/best.npz --level level-01-basics \
   --eval-seeds 11 23 37 41 53
+parkour diagnose --checkpoint runs/walk-e/checkpoints/latest.npz --eval-seeds 11 23 37 41 53
+parkour inspect --level level-01-basics   # the reachable joint box behind the hop
 parkour dashboard --port 8000     # http://localhost:8000 → Replay tab
+
+# a bounded run with the current loop (stops at the first completed course)
+parkour train --level level-01-basics --run-id walk-h --steps 6000000 --envs 4 \
+  --stop-on-success --max-minutes 120 --eval-interval 20 --eval-episodes 3
 ```
 
 ## 7. What remains unfinished
@@ -215,12 +270,18 @@ parkour dashboard --port 8000     # http://localhost:8000 → Replay tab
    explanations: it is not evaluation noise (deterministic ≈ stochastic) and it is not sample
    budget alone (3.3 M extra steps changed nothing). The remaining suspects are reward geometry and
    exploration structure. Concrete next experiments, in the order I would run them:
+   * **The action box is the first suspect, not another reward weight.** At `action_scale=0.25`
+     the knee travels 17.2° of its 138° range and, over the whole hip/knee/ankle box, the foot site
+     can only rise (Δz 0.000–0.170 m): no crouch, no push-off, no stride. A symmetric hop is close to
+     the best gait this box contains, which is exactly what five recipes converged to. Test
+     `--action-scale 0.5` and `action_mode="range"` (≤ 1 M steps each) and score them with
+     `parkour diagnose` (flight fraction, completion) before touching the reward again.
    * **Reward geometry is exhausted as a lever.** `walk-e` (fall −2) hops 3 m and collapses;
      `walk-f` (fall −20, survival doubled) stands and shuffles for 7.6 s instead; `walk-g`
      (flight-phase penalty + gait floor) reaches the same 55–59 % ceiling in half the steps. All
      three score 0 %. Re-tuning these weights again is not the next move — the missing signal is
      *how* to step, which points at a reference motion rather than at another scalar weight.
-   * **Reference gait tracking** instead of pure exploration: the CPG search over ~2 000 open-loop
+   * **Reference gait tracking** if a wider action box still hops: the CPG search over ~2 000 open-loop
      parameter sets peaked at 0.36 m, so the reference should come from a scripted quasi-static
      walk validated in the *enclosed* loop, or from a public retargeted mocap clip.
    * **Mirror symmetry** in the observation/action space plus symmetric augmentation, which
