@@ -420,3 +420,31 @@ def test_stale_running_run_is_reported_as_interrupted(
     # A live trainer keeps its status.
     store.update_summary(status="running", pid=os.getpid())
     assert effective_status(store.read_summary()) == "running"
+
+
+def test_evaluation_runs_the_requested_number_of_episodes(catalog: LevelCatalog) -> None:
+    """``--eval-episodes`` must not be silently capped by the number of configured seeds."""
+
+    from parkour_lab.evaluation import expand_eval_seeds
+
+    assert expand_eval_seeds((11, 23), None) == [11, 23]
+    assert expand_eval_seeds((11, 23), 1) == [11]
+    assert expand_eval_seeds((11, 23), 2) == [11, 23]
+    extra = expand_eval_seeds((11, 23), 5)
+    assert len(extra) == 5
+    assert len(set(extra)) == 5
+    assert extra[:2] == [11, 23]
+    with pytest.raises(ValueError):
+        expand_eval_seeds((), 3)
+    with pytest.raises(ValueError):
+        expand_eval_seeds((11,), 0)
+
+    model = ActorCritic(90, 19, hidden_dim=16, seed=0)
+    evaluation = evaluate_policy(
+        model,
+        catalog,
+        ["level-01-basics"],
+        config=EvalConfig(seeds=(11, 23), deterministic=True, max_episodes_per_level=4),
+    )
+    assert evaluation["aggregate"]["overall"]["episodes"] == 4
+    assert len({record["seed"] for record in evaluation["records"]}) == 4

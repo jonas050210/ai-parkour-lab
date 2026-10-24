@@ -260,10 +260,20 @@ class ActorCritic:
     def sample(
         self, observations: np.ndarray, rng: np.random.Generator
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Draw actions for a rollout, clipped to the range the environment executes.
+
+        The environment clips every action to ``[-1, 1]`` (the actuator mapping assumes it),
+        so an unclipped sample would mean PPO scores and updates an action that was never
+        applied.  Clipping here and evaluating the log-probability *of the clipped action*
+        at least keeps (observation, action, log-prob) describing the executed transition.
+        The density of a clipped Gaussian is not renormalised over ``[-1, 1]``; that is a
+        known approximation, and it is much smaller than acting out of range silently.
+        """
+
         mean = self.action_mean(observations)
         std = np.exp(self.log_std)
         noise = rng.standard_normal(mean.shape)
-        actions = mean + std * noise
+        actions = np.clip(mean + std * noise, -1.0, 1.0)
         log_prob = -0.5 * np.sum(
             ((actions - mean) / std) ** 2 + 2.0 * self.log_std + np.log(2 * np.pi), axis=-1
         )

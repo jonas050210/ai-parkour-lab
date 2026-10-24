@@ -202,7 +202,7 @@ class EnvConfig:
     terminate_on_collapse: bool = True
     collect_diagnostics: bool = True
     record_frames: bool = False
-    frame_stride: int = 3
+    frame_stride: int = 2  # 25 fps at the 50 Hz (0.02 s) control step
 
     @property
     def control_dt(self) -> float:
@@ -836,8 +836,18 @@ class ParkourEnv:
         return float(np.linalg.norm(delta))
 
     def _progress_fraction(self) -> float:
+        """Fraction of the course covered, where *reaching the finish* is exactly 1.0.
+
+        The finish is a disc of ``finish_radius`` around its centre, so the raw distance
+        ratio stops at ``1 - radius / distance`` (0.85 on level-01) even for a completed
+        course.  Reporting a successful episode as "85 % complete" made success and
+        completion disagree in every aggregate, so success is normalised to 1.0 here.
+        """
+
         remaining = self._goal_distance()
         fraction = 1.0 - remaining / max(self._initial_goal_distance, 1e-6)
+        if self._termination_reason == "course_complete":
+            return 1.0
         return _clip(fraction, 0.0, 1.0)
 
     def _reward_components(

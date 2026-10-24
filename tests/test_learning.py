@@ -390,3 +390,76 @@ def test_curriculum_config_round_trip() -> None:
     assert restored.novelty_bonus == 2.5
     with pytest.raises(ValueError):
         CurriculumConfig.from_dict({"nope": 1.0})
+
+
+def test_sampled_actions_stay_inside_the_control_range() -> None:
+    """PPO must train on the action the environment actually executes.
+
+    The env clips actions to ``[-1, 1]``.  Before this test existed the rollout stored the raw
+    Gaussian sample and its log-probability, so ~25 % of action dimensions in a trained
+    rollout were scored against values that were never applied.
+    """
+
+    model = ActorCritic(OBSERVATION_DIM, ACTION_DIM, hidden_dim=32, seed=5, initial_log_std=0.0)
+    rng = np.random.default_rng(1)
+    observations = rng.normal(0, 3.0, (64, OBSERVATION_DIM))
+    actions, log_probs, _ = model.sample(observations, rng)
+    assert np.all(np.abs(actions) <= 1.0)
+    # The stored log-probability is that of the stored (clipped) action.
+    recomputed, _, _ = model.evaluate_actions(observations, actions)
+    np.testing.assert_allclose(recomputed, log_probs, rtol=1e-9, atol=1e-12)
+    # With a wide policy some samples would have left the range unclipped.
+    raw = model.action_mean(observations) + np.exp(model.log_std) * rng.standard_normal(
+        actions.shape
+    )
+    assert np.mean(np.abs(raw) > 1.0) > 0.0
+
+
+def test_benchmark_simulation_measures_the_requested_worker_layout() -> None:
+    """A benchmark that ignores ``workers`` cannot justify the training defaults."""
+
+    from parkour_lab.training.vector import benchmark_simulation
+
+    catalog = LevelCatalog.load()
+    levels = ["level-01-basics", "level-02-step-up"]
+    serial = benchmark_simulation(catalog, levels=levels, num_envs=2, steps=8, warmup=2, workers=1)
+    assert serial["workers"] == 1
+    assert serial["num_envs"] == 2
+    assert serial["transitions"] == 16
+    assert serial["steps_per_second"] > 0
+    parallel = benchmark_simulation(
+        catalog, levels=levels, num_envs=2, steps=8, warmup=2, workers=2
+    )
+    assert parallel["workers"] == 2
+
+
+def test_finished_episode_is_labelled_with_the_level_it_ran(catalog: LevelCatalog) -> None:
+    """A level assigned for the *next* reset must not relabel the episode that just ended."""
+
+    from parkour_lab.env import EnvConfig
+    from parkour_lab.training.vector import SerialVecEnv
+
+    vec = SerialVecEnv(
+        catalog,
+        ["level-01-basics"],
+        env_config=EnvConfig(level_id="level-01-basics", max_episode_seconds=0.2),
+        seeds=[0],
+    )
+    try:
+        vec.reset()
+        # Assign a different level while the episode is still running.
+        vec.set_levels(["level-03-small-hops"])
+        rng = np.random.default_rng(0)
+        record = None
+        for _ in range(200):
+            _obs, _rew, terminated, truncated, infos = vec.step(
+                rng.uniform(-1.0, 1.0, (1, vec.action_dim))
+            )
+            if terminated[0] or truncated[0]:
+                record = infos[0]["episode"]
+                break
+        assert record is not None
+        assert record["level_id"] == "level-01-basics"
+        assert record["assigned_level"] == "level-03-small-hops"
+    finally:
+        vec.close()

@@ -559,8 +559,9 @@ class TrainingRunner:
             self.catalog,
             self.eval_levels,
             config=EvalConfig(
-                seeds=config.eval_seeds[: config.eval_episodes_per_level],
+                seeds=config.eval_seeds,
                 deterministic=True,
+                max_episodes_per_level=config.eval_episodes_per_level,
             ),
             env_config=config.env_config(self.eval_levels[0]),
         )

@@ -20,6 +20,30 @@ from .policies import ActorCritic
 DEFAULT_EVAL_SEEDS = (11, 23, 37)
 
 
+def expand_eval_seeds(seeds: Sequence[int], count: int | None = None) -> list[int]:
+    """Return exactly ``count`` distinct evaluation seeds.
+
+    Asking for more episodes than there are configured seeds used to silently return fewer
+    episodes, which made ``--eval-episodes`` a lie and weakened every reported rate.  Extra
+    seeds are derived deterministically from the highest configured seed, so evaluation stays
+    reproducible and no two episodes share a reset.
+    """
+
+    base = [int(seed) for seed in seeds]
+    if not base:
+        raise ValueError("at least one evaluation seed is required")
+    if count is None:
+        return base
+    count = int(count)
+    if count <= 0:
+        raise ValueError("episode count must be positive")
+    if count <= len(base):
+        return base[:count]
+    highest = max(base)
+    extra = [highest + 1000 * (index + 1) for index in range(count - len(base))]
+    return base + extra
+
+
 @dataclass(frozen=True, slots=True)
 class EvalConfig:
     """How a policy is evaluated.
@@ -118,9 +142,7 @@ def evaluate_policy(
     completed = 0
     for level_id in level_ids:
         level = catalog[level_id]
-        seeds = list(cfg.seeds)
-        if cfg.max_episodes_per_level is not None:
-            seeds = seeds[: cfg.max_episodes_per_level]
+        seeds = expand_eval_seeds(cfg.seeds, cfg.max_episodes_per_level)
         for seed in seeds:
             record = rollout_episode(
                 policy,
@@ -351,6 +373,7 @@ __all__ = [
     "env_config_from_checkpoint",
     "evaluate_policy",
     "format_evaluation_table",
+    "expand_eval_seeds",
     "rollout_episode",
     "summarise_terminations",
 ]

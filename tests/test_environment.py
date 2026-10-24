@@ -524,3 +524,34 @@ def test_gait_credit_gate_and_optional_floor(catalog: LevelCatalog) -> None:
     finally:
         strict.close()
         floored.close()
+
+
+def test_successful_episode_reports_full_completion(catalog: LevelCatalog) -> None:
+    """Reaching the finish disc must read as 100 %, not ``1 - radius/distance``."""
+
+    level = catalog["level-01-basics"]
+    env = ParkourEnv(
+        level,
+        EnvConfig(
+            level_id=level.id,
+            randomize_reset=False,
+            stagnation_seconds=0.0,
+            max_episode_seconds=5.0,
+        ),
+    )
+    try:
+        env.reset(seed=4)
+        # Stand just inside the finish disc (not on its centre, where the distance is 0).
+        env.data.qpos[0] = level.finish_position.x - 0.5 * level.finish_radius
+        env.data.qpos[1] = level.finish_position.y
+        env.data.qpos[2] = level.finish_position.z
+        mujoco.mj_forward(env.model, env.data)
+        raw = 1.0 - env._goal_distance() / env._initial_goal_distance
+        assert 0.7 < raw < 0.95  # the distance-based value the metric used to report
+        result = env.step(np.zeros(ACTION_DIM))
+        assert result.info["termination_reason"] == "course_complete"
+        summary = env.episode_summary()
+        assert summary["success"] is True
+        assert summary["completion_fraction"] == pytest.approx(1.0)
+    finally:
+        env.close()

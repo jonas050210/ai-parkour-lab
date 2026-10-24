@@ -528,16 +528,17 @@ def command_benchmark(args: argparse.Namespace) -> int:
     worker_counts = (
         [int(value) for value in args.worker_list.split(",") if value.strip()]
         if args.worker_list
-        else [1]
+        else [1, 0]  # 0 means "one worker per environment" (the subprocess layout)
     )
     results = []
     print(f"benchmarking {args.steps} control steps per configuration...")
-    for workers in worker_counts:
+    for requested in worker_counts:
         for num_envs in env_counts:
             if num_envs > len(levels):
                 level_ids = [levels[index % len(levels)] for index in range(num_envs)]
             else:
                 level_ids = list(levels[:num_envs])
+            workers = num_envs if requested <= 0 else requested
             if workers > num_envs:
                 continue
             result = benchmark_simulation(
@@ -545,9 +546,9 @@ def command_benchmark(args: argparse.Namespace) -> int:
                 levels=level_ids,
                 num_envs=num_envs,
                 steps=args.steps,
+                workers=workers,
                 env_config=EnvConfig(level_id=level_ids[0]),
             )
-            result["workers"] = workers
             results.append(result)
             print(
                 f"  envs={num_envs} workers={workers}: "
@@ -933,7 +934,12 @@ def build_parser() -> argparse.ArgumentParser:
     benchmark.add_argument("--level", action="append")
     benchmark.add_argument("--all", dest="all_levels", action="store_true")
     benchmark.add_argument("--envs", default="1,2,4")
-    benchmark.add_argument("--workers", dest="worker_list", default="1")
+    benchmark.add_argument(
+        "--workers",
+        dest="worker_list",
+        default=None,
+        help="comma-separated worker counts; default measures 1 and one-per-env",
+    )
     benchmark.add_argument("--steps", type=int, default=200)
     benchmark.add_argument("--out", default=None)
     benchmark.set_defaults(func=command_benchmark)

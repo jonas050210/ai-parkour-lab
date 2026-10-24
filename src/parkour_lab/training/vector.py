@@ -161,7 +161,10 @@ class _EnvPool:
 
     def _episode_record(self, env: ParkourEnv, slot: int) -> dict[str, Any]:
         summary = env.episode_summary()
-        summary["level_id"] = self.levels[slot]
+        # ``self.levels[slot]`` is the level assigned for the *next* reset, which is not
+        # necessarily the level this episode ran on.  The environment itself is authoritative.
+        summary["level_id"] = env.level.id
+        summary["assigned_level"] = self.levels[slot]
         summary["env_index"] = slot
         return summary
 
@@ -194,6 +197,7 @@ class SerialVecEnv:
             raise ValueError("one seed per environment is required")
         self._pool = _EnvPool(catalog, base_config, levels, seeds)
         self.num_envs = len(levels)
+        self.workers = 1
 
     @property
     def observation_dim(self) -> int:
@@ -374,6 +378,9 @@ class SubprocVecEnv:
             for connection, chunk in zip(self._connections, self._chunks):
                 connection.send({"cmd": "reset", "seeds": [seeds[i] for i in chunk]})
             responses = [connection.recv() for connection in self._connections]
+            for response in responses:
+                if "error" in response:
+                    raise RuntimeError(f"vector env worker error: {response['error']}")
         return np.concatenate([response["obs"] for response in responses], axis=0)
 
     def step(self, actions: np.ndarray):
@@ -463,17 +470,24 @@ def benchmark_simulation(
     warmup: int = 20,
     env_config: EnvConfig | None = None,
     seed: int = 0,
+    workers: int | None = None,
 ) -> dict[str, Any]:
-    """Measure raw environment throughput for a given worker layout."""
+    """Measure raw environment throughput for a given worker layout.
+
+    ``workers`` has to be honoured: the benchmark exists to decide the training defaults, so
+    reporting a worker count that was not actually measured would be worse than not running it.
+    """
 
     level_ids = [levels[index % len(levels)] for index in range(num_envs)]
+    workers = num_envs if workers is None else max(1, min(int(workers), num_envs))
     env = make_vec_env(
         catalog,
         level_ids,
         env_config=env_config,
         seeds=[seed + index for index in range(num_envs)],
-        workers=num_envs,
+        workers=workers,
     )
+    workers = int(getattr(env, "workers", 1))
     rng = np.random.default_rng(seed)
     try:
         env.reset()
@@ -491,7 +505,7 @@ def benchmark_simulation(
         env.close()
     return {
         "num_envs": num_envs,
-        "workers": num_envs,
+        "workers": workers,
         "steps": steps,
         "transitions": transitions,
         "elapsed_seconds": elapsed,
