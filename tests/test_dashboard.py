@@ -522,3 +522,21 @@ def test_best_evaluation_breaks_success_ties_on_completion(tmp_path: Path) -> No
     run = [entry for entry in list_runs(runs_dir) if entry["run_id"] == "ties-01"][0]
     assert run["best_eval_success"] == pytest.approx(0.0)
     assert run["best_eval_completion"] == pytest.approx(0.42)
+
+
+def test_run_detail_reports_the_same_status_as_the_run_list(tmp_path: Path) -> None:
+    """A killed run must not say "running" in the detail panel while its card says interrupted."""
+
+    runs_dir = tmp_path / "runs"
+    store = _make_run(runs_dir, run_id="stale-01")
+    store.update_summary(status="running")
+    oldest = store.paths.summary.stat().st_mtime - 2 * 3600
+    for path in store.paths.metrics_dir.glob("*"):
+        os.utime(path, (oldest, oldest))
+    os.utime(store.paths.summary, (oldest, oldest))
+
+    client = TestClient(create_app(runs_dir=runs_dir))
+    listed = {run["run_id"]: run for run in client.get("/api/runs").json()["runs"]}
+    detail = client.get("/api/runs/stale-01").json()
+    assert detail["status"] == listed["stale-01"]["status"] == "interrupted"
+    assert detail["summary"]["status"] == "running"  # the raw record is preserved

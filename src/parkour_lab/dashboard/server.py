@@ -29,7 +29,14 @@ from pydantic import BaseModel, Field
 
 from .. import __version__
 from ..levels import DEFAULT_LEVELS_DIR, LevelCatalog, LevelError
-from ..storage import DEFAULT_RUNS_DIR, RunStore, list_runs, read_json
+from ..storage import (
+    DEFAULT_RUNS_DIR,
+    RunStore,
+    effective_status,
+    last_activity,
+    list_runs,
+    read_json,
+)
 
 STATIC_DIR = Path(__file__).parent / "static"
 MAX_STEPS = 5_000_000
@@ -622,6 +629,11 @@ def create_app(
             "run_id": run_id,
             "config": config,
             "summary": summary,
+            # Same rule as the run list: a "running" summary whose process is gone is
+            # interrupted, and the detail panel used to disagree with the card next to it.
+            "status": effective_status(
+                summary, last_activity=last_activity(store.paths.root)
+            ),
             "provenance": _CACHE.get(store.paths.provenance, lambda: read_json(store.paths.provenance, {})),
             "training": _training_rows(store),
             "episode_aggregate": _episode_aggregate(store),

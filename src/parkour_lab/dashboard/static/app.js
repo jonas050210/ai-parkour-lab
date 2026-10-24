@@ -726,12 +726,15 @@ function renderRunDetail(detail) {
 
   $("#detail-title").textContent = detail.run_id;
   const badge = $("#detail-status");
-  badge.textContent = summary.status || "unknown";
-  badge.className = `pill ${summary.status === "completed" ? "ok" : summary.status === "running" ? "warn" : ""}`;
+  const status = detail.status || summary.status || "unknown";
+  badge.textContent = summary.stop_reason && summary.stop_reason !== "budget"
+    ? `${status} · ${summary.stop_reason}`
+    : status;
+  badge.className = `pill ${status === "completed" ? "ok" : status === "running" ? "warn" : ""}`;
 
   $("#detail-stats").innerHTML = "";
   $("#detail-stats").append(
-    stat("Best eval success", fmt.pct(summary.best_eval_success), `iteration ${summary.best_eval_iteration ?? "–"}`),
+    stat("Best eval success", fmt.pct(summary.best_eval_success), summary.first_success ? `first success: ${summary.first_success.source} @ ${fmt.int(summary.first_success.step)}` : "never completed a course"),
     stat("Latest eval success", fmt.pct(latestOverall.success_rate), `${latestOverall.episodes ?? 0} episodes`),
     stat("Latest completion", fmt.pct(latestOverall.mean_completion), "mean distance to finish"),
     stat(
