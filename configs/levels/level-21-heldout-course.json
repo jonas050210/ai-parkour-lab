@@ -1,0 +1,220 @@
+{
+  "schema_version": 1,
+  "id": "level-21-heldout-course",
+  "title": "Held-out Course",
+  "order": 21,
+  "difficulty": 5,
+  "split": "held-out",
+  "tags": [
+    "held-out",
+    "mixed"
+  ],
+  "summary": "Unseen generalisation course: raised stones, a shelf and a spike run at 45 cm height.",
+  "time_limit_seconds": 44.0,
+  "par_time_seconds": 22.0,
+  "units": {
+    "distance": "m",
+    "angle": "degree",
+    "up_axis": "+z",
+    "forward_axis": "+x"
+  },
+  "spawn": {
+    "position": [
+      0.0,
+      0.0,
+      0.94
+    ],
+    "yaw_degrees": 0.0
+  },
+  "finish": {
+    "position": [
+      11.2,
+      0.0,
+      1.37
+    ],
+    "radius": 0.9
+  },
+  "bounds": {
+    "minimum": [
+      -3.5,
+      -4.0,
+      -3.0
+    ],
+    "maximum": [
+      14.3,
+      4.0,
+      5.0
+    ]
+  },
+  "obstacles": [
+    {
+      "id": "start",
+      "kind": "platform",
+      "position": [
+        0.5,
+        0.0,
+        -0.2
+      ],
+      "size": [
+        1.5,
+        1.2,
+        0.2
+      ]
+    },
+    {
+      "id": "gap-1",
+      "kind": "gap",
+      "position": [
+        2.225,
+        0.0,
+        0.0
+      ],
+      "size": [
+        0.225,
+        1.0,
+        0.02
+      ]
+    },
+    {
+      "id": "stone-a",
+      "kind": "rooftop",
+      "position": [
+        2.9,
+        0.0,
+        -0.1
+      ],
+      "size": [
+        0.45,
+        0.45,
+        0.3
+      ]
+    },
+    {
+      "id": "gap-2",
+      "kind": "gap",
+      "position": [
+        3.575,
+        0.0,
+        0.0
+      ],
+      "size": [
+        0.225,
+        0.45,
+        0.02
+      ]
+    },
+    {
+      "id": "stone-b",
+      "kind": "rooftop",
+      "position": [
+        4.25,
+        0.0,
+        -0.1
+      ],
+      "size": [
+        0.45,
+        0.45,
+        0.3
+      ]
+    },
+    {
+      "id": "gap-3",
+      "kind": "gap",
+      "position": [
+        4.95,
+        0.0,
+        0.0
+      ],
+      "size": [
+        0.25,
+        0.45,
+        0.02
+      ]
+    },
+    {
+      "id": "shelf",
+      "kind": "platform",
+      "position": [
+        6.0,
+        0.0,
+        0.025
+      ],
+      "size": [
+        0.8,
+        0.6,
+        0.425
+      ]
+    },
+    {
+      "id": "gap-4",
+      "kind": "gap",
+      "position": [
+        7.05,
+        0.0,
+        0.0
+      ],
+      "size": [
+        0.25,
+        0.6,
+        0.02
+      ]
+    },
+    {
+      "id": "spike-run",
+      "kind": "platform",
+      "position": [
+        8.3,
+        0.0,
+        0.025
+      ],
+      "size": [
+        1.0,
+        1.1,
+        0.425
+      ]
+    },
+    {
+      "id": "spikes",
+      "kind": "spike_strip",
+      "position": [
+        8.2,
+        0.0,
+        0.06
+      ],
+      "size": [
+        0.2,
+        1.0,
+        0.46
+      ],
+      "hazard": true
+    },
+    {
+      "id": "gap-5",
+      "kind": "gap",
+      "position": [
+        9.55,
+        0.0,
+        0.0
+      ],
+      "size": [
+        0.25,
+        0.9,
+        0.02
+      ]
+    },
+    {
+      "id": "end",
+      "kind": "platform",
+      "position": [
+        10.8,
+        0.0,
+        0.025
+      ],
+      "size": [
+        1.0,
+        1.0,
+        0.425
+      ]
+    }
+  ]
+}

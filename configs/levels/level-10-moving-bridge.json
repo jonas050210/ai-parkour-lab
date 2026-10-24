@@ -1,0 +1,117 @@
+{
+  "schema_version": 1,
+  "id": "level-10-moving-bridge",
+  "title": "Moving Bridge",
+  "order": 10,
+  "difficulty": 3,
+  "split": "train",
+  "tags": [
+    "moving",
+    "timing",
+    "gap"
+  ],
+  "summary": "A 2.8 m gap is bridged by a platform sliding back and forth: time the crossing.",
+  "time_limit_seconds": 34.0,
+  "par_time_seconds": 16.0,
+  "units": {
+    "distance": "m",
+    "angle": "degree",
+    "up_axis": "+z",
+    "forward_axis": "+x"
+  },
+  "spawn": {
+    "position": [
+      0.0,
+      0.0,
+      0.94
+    ],
+    "yaw_degrees": 0.0
+  },
+  "finish": {
+    "position": [
+      7.6,
+      0.0,
+      0.92
+    ],
+    "radius": 0.9
+  },
+  "bounds": {
+    "minimum": [
+      -3.5,
+      -4.0,
+      -3.0
+    ],
+    "maximum": [
+      10.9,
+      4.0,
+      5.0
+    ]
+  },
+  "obstacles": [
+    {
+      "id": "start",
+      "kind": "platform",
+      "position": [
+        0.8,
+        0.0,
+        -0.2
+      ],
+      "size": [
+        1.8,
+        1.2,
+        0.2
+      ]
+    },
+    {
+      "id": "end",
+      "kind": "platform",
+      "position": [
+        6.9,
+        0.0,
+        -0.2
+      ],
+      "size": [
+        1.5,
+        1.2,
+        0.2
+      ]
+    },
+    {
+      "id": "gap-1",
+      "kind": "gap",
+      "position": [
+        4.0,
+        0.0,
+        0.0
+      ],
+      "size": [
+        1.4,
+        1.1,
+        0.02
+      ]
+    },
+    {
+      "id": "moving-bridge",
+      "kind": "moving_platform",
+      "position": [
+        4.0,
+        0.0,
+        -0.2
+      ],
+      "size": [
+        0.7,
+        0.75,
+        0.2
+      ],
+      "motion": {
+        "axis": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "amplitude": 0.55,
+        "period_seconds": 4.0
+      }
+    }
+  ]
+}

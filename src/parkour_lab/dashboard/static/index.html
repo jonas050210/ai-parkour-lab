@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>AI Parkour Lab · Research Dashboard</title>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml"/>
+  <link rel="stylesheet" href="/static/styles.css"/>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <svg viewBox="0 0 32 32" aria-hidden="true" class="logo">
+      <rect x="2" y="22" width="9" height="6" rx="1.5"/>
+      <rect x="13" y="16" width="7" height="12" rx="1.5"/>
+      <rect x="22" y="9" width="8" height="19" rx="1.5"/>
+      <circle cx="8" cy="8" r="3"/>
+    </svg>
+    <div>
+      <h1>AI Parkour Lab</h1>
+      <p class="subtitle">MuJoCo humanoid · PPO · adaptive curriculum</p>
+    </div>
+  </div>
+  <nav class="tabs" role="tablist">
+    <button class="tab active" data-tab="overview" role="tab">Overview</button>
+    <button class="tab" data-tab="training" role="tab">Training</button>
+    <button class="tab" data-tab="levels" role="tab">Levels</button>
+    <button class="tab" data-tab="replay" role="tab">Replay 3D</button>
+    <button class="tab" data-tab="compare" role="tab">Compare</button>
+    <button class="tab" data-tab="about" role="tab">About</button>
+  </nav>
+  <div class="status">
+    <span id="health-dot" class="dot" title="backend status"></span>
+    <span id="health-text">connecting…</span>
+  </div>
+</header>
+
+<div id="banner" class="banner hidden"></div>
+
+<main>
+  <!-- ============================== OVERVIEW ============================== -->
+  <section id="panel-overview" class="panel active">
+    <div class="layout">
+      <aside class="sidebar card">
+        <div class="card-head">
+          <h2>Runs</h2>
+          <button id="refresh-runs" class="ghost small">Refresh</button>
+        </div>
+        <div id="run-list" class="run-list"><p class="muted">Loading runs…</p></div>
+      </aside>
+
+      <div class="content">
+        <div id="run-empty" class="card empty">
+          <h2>No run selected</h2>
+          <p class="muted">
+            Pick a run on the left, or start a training job in the
+            <strong>Training</strong> tab. Runs are read from the local
+            <code>runs/</code> directory, so everything shown here is real experiment output.
+          </p>
+        </div>
+
+        <div id="run-detail" class="hidden">
+          <div class="card">
+            <div class="card-head">
+              <h2 id="detail-title">Run</h2>
+              <span id="detail-status" class="pill">–</span>
+            </div>
+            <div id="detail-meta" class="meta-grid"></div>
+            <div class="stat-row" id="detail-stats"></div>
+          </div>
+
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-head">
+                <h3>Learning progress</h3>
+                <span class="muted small">episode return · success rate</span>
+              </div>
+              <canvas id="chart-progress" height="240"></canvas>
+            </div>
+            <div class="card">
+              <div class="card-head">
+                <h3>Evaluation success</h3>
+                <span class="muted small">deterministic, held-in levels</span>
+              </div>
+              <canvas id="chart-eval" height="240"></canvas>
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div class="card">
+              <h3>Success rate by level</h3>
+              <div id="level-bars" class="bars"></div>
+            </div>
+            <div class="card">
+              <h3>Episode outcomes</h3>
+              <div id="termination-list" class="term-list"></div>
+              <h3 class="mt">Training errors / stability</h3>
+              <div id="stability" class="stability"></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <h3>Episode timeline</h3>
+              <span class="muted small">10-iteration buckets</span>
+            </div>
+            <canvas id="chart-timeline" height="200"></canvas>
+          </div>
+
+          <div class="card">
+            <h3>Checkpoints &amp; replays</h3>
+            <div id="artifacts" class="artifacts"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================== TRAINING ============================== -->
+  <section id="panel-training" class="panel">
+    <div class="layout">
+      <div class="card sidebar">
+        <h2>New training run</h2>
+        <form id="train-form" class="form">
+          <label>Levels <span class="muted small">(none = all training levels)</span></label>
+          <div id="train-levels" class="level-picker"></div>
+          <div class="grid-2 tight">
+            <label>Steps<input type="number" name="steps" value="200000" min="1000" max="5000000" step="1000"/></label>
+            <label>Seed<input type="number" name="seed" value="0" min="0" max="1000000"/></label>
+            <label>Environments<input type="number" name="envs" value="4" min="1" max="16"/></label>
+            <label>Workers<input type="number" name="workers" value="1" min="1" max="16"/></label>
+            <label>Curriculum
+              <select name="curriculum">
+                <option value="adaptive">adaptive</option>
+                <option value="uniform">uniform</option>
+                <option value="single">single</option>
+              </select>
+            </label>
+            <label>Max minutes<input type="number" name="max_minutes" value="30" min="0.1" max="1440" step="0.5"/></label>
+            <label>Rollout steps<input type="number" name="rollout_steps" value="512" min="32" max="4096" step="32"/></label>
+            <label>Hidden size<input type="number" name="hidden_dim" value="128" min="8" max="1024" step="8"/></label>
+            <label>Eval every<input type="number" name="eval_interval" value="20" min="1" max="10000"/></label>
+            <label>Checkpoint every<input type="number" name="checkpoint_interval" value="20" min="1" max="10000"/></label>
+            <label>Physics step (s)<input type="number" name="physics_timestep" value="0.004" min="0.001" max="0.01" step="0.001"/></label>
+            <label>Decimation<input type="number" name="control_decimation" value="5" min="1" max="20"/></label>
+            <label>Action scale<input type="number" name="action_scale" value="0.3" min="0.05" max="0.8" step="0.05"/></label>
+            <label>Action smoothing<input type="number" name="action_smoothing" value="0.6" min="0" max="0.95" step="0.05"/></label>
+            <label>Episode cap (s)<input type="number" name="max_episode_seconds" value="10" min="0.5" max="60" step="0.5"/></label>
+            <label>Stagnation (s)<input type="number" name="stagnation_seconds" value="2" min="0" max="30" step="0.5"/></label>
+            <label>Reward ramp<input type="number" name="reward_ramp_fraction" value="0.1" min="0" max="0.9" step="0.05"/></label>
+          </div>
+          <details class="form-more">
+            <summary>Reward weights (optional)</summary>
+            <div class="grid-2 tight">
+              <label>Progress / m<input type="number" name="reward_progress_per_metre" value="6" step="0.5"/></label>
+              <label>Forward velocity / s<input type="number" name="reward_forward_velocity_per_second" value="4" step="0.5"/></label>
+              <label>Gait / s<input type="number" name="reward_gait_per_second" value="6" step="0.5"/></label>
+              <label>Upright / s<input type="number" name="reward_upright_per_second" value="1.5" step="0.1"/></label>
+              <label>Height / s<input type="number" name="reward_height_per_second" value="2" step="0.1"/></label>
+              <label>Alive / s<input type="number" name="reward_alive_per_second" value="1" step="0.1"/></label>
+              <label>Fall penalty<input type="number" name="reward_fall_penalty" value="2" step="1"/></label>
+              <label>Action-rate penalty<input type="number" name="reward_action_rate_penalty" value="0.02" step="0.01"/></label>
+            </div>
+            <p class="muted small">
+              A reward ramp starting from posture-only shaping is applied when the ramp field is
+              above zero, which is what keeps the policy from learning to dive at the finish line.
+            </p>
+          </details>
+          <label>Name<input type="text" name="name" maxlength="48" placeholder="e.g. adaptive-01"/></label>
+          <label>Notes<input type="text" name="notes" maxlength="500" placeholder="optional experiment note"/></label>
+          <div class="form-actions">
+            <button type="submit" class="primary" id="start-btn">Start training</button>
+            <button type="button" class="ghost" id="stop-btn" disabled>Stop</button>
+          </div>
+          <p class="muted small">
+            Training runs in a separate process. The dashboard never simulates physics and
+            never edits checkpoints.
+          </p>
+        </form>
+      </div>
+      <div class="content">
+        <div class="card">
+          <div class="card-head">
+            <h2>Job</h2>
+            <span id="job-status" class="pill">idle</span>
+          </div>
+          <div id="job-meta" class="meta-grid"></div>
+          <pre id="job-log" class="log">No active job.</pre>
+        </div>
+        <div class="card">
+          <h3>Hardware check</h3>
+          <p class="muted small">Measured in this browser session via the local backend.</p>
+          <button id="bench-btn" class="ghost small">Run environment benchmark</button>
+          <div id="bench-results" class="bench"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================== LEVELS ============================== -->
+  <section id="panel-levels" class="panel">
+    <div class="layout">
+      <aside class="sidebar card">
+        <div class="card-head"><h2>Fixed levels</h2><span id="level-count" class="muted small"></span></div>
+        <div id="level-list" class="level-list"></div>
+      </aside>
+      <div class="content">
+        <div class="card">
+          <div class="card-head">
+            <h2 id="level-title">Level</h2>
+            <span id="level-badge" class="pill">–</span>
+          </div>
+          <p id="level-summary" class="muted"></p>
+          <div id="level-viewer" class="viewer"></div>
+          <div id="level-details" class="meta-grid"></div>
+          <div id="level-obstacles" class="table-wrap"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================== REPLAY ============================== -->
+  <section id="panel-replay" class="panel">
+    <div class="layout">
+      <aside class="sidebar card">
+        <h2>Recorded replays</h2>
+        <label class="stack">Run<select id="replay-run"></select></label>
+        <label class="stack">Episode<select id="replay-file"></select></label>
+        <div id="replay-info" class="meta-grid"></div>
+        <button id="replay-load" class="primary" type="button">Load replay</button>
+        <p class="muted small">
+          Replays are recorded during evaluation and stored in the run directory. The
+          browser replays recorded body poses; it does not run MuJoCo.
+        </p>
+      </aside>
+      <div class="content">
+        <div class="card">
+          <div class="card-head">
+            <h2 id="replay-title">3D replay</h2>
+            <span id="replay-badge" class="pill">idle</span>
+          </div>
+          <div id="replay-viewer" class="viewer large"></div>
+          <div class="playback">
+            <button id="play-btn" class="primary" type="button">Pause</button>
+            <input id="scrub" type="range" min="0" max="100" value="0" step="0.1"/>
+            <span id="replay-time" class="mono">0.00s</span>
+            <label class="inline">Speed
+              <select id="speed">
+                <option value="0.25">0.25×</option>
+                <option value="0.5">0.5×</option>
+                <option value="1" selected>1×</option>
+                <option value="2">2×</option>
+              </select>
+            </label>
+            <label class="inline"><input id="follow" type="checkbox" checked/> Follow</label>
+            <button id="reset-cam" class="ghost small" type="button">Reset camera</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================== COMPARE ============================== -->
+  <section id="panel-compare" class="panel">
+    <div class="card">
+      <div class="card-head">
+        <h2>Run comparison</h2>
+        <span class="muted small">matched levels and seeds from saved evaluations</span>
+      </div>
+      <div class="compare-controls">
+        <label class="stack">Baseline run<select id="compare-a"></select></label>
+        <label class="stack">Candidate run<select id="compare-b"></select></label>
+        <button id="compare-btn" class="primary" type="button">Compare</button>
+      </div>
+      <div id="compare-summary" class="stat-row"></div>
+      <div id="compare-table" class="table-wrap"></div>
+      <canvas id="chart-compare" height="220"></canvas>
+    </div>
+  </section>
+
+  <!-- ============================== ABOUT ============================== -->
+  <section id="panel-about" class="panel">
+    <div class="card prose">
+      <h2>About this dashboard</h2>
+      <p>
+        AI Parkour Lab trains a 25-DoF articulated MuJoCo humanoid on 22 fixed parkour
+        courses (20 training, 2 held-out) with PPO, parallel CPU environments and an
+        adaptive curriculum. This dashboard reads the immutable run directories written by
+        the trainer.
+      </p>
+      <h3>What is real here</h3>
+      <ul>
+        <li>All metrics come from saved run records (<code>metrics/*.csv</code>, <code>metrics/episodes.jsonl</code>, <code>evaluation/*.json</code>).</li>
+        <li>3D replays are recorded body poses from actual MuJoCo episodes, replayed in the browser.</li>
+        <li>Training is launched as a separate local process with validated parameters.</li>
+      </ul>
+      <h3>What this dashboard does not do</h3>
+      <ul>
+        <li>It does not run the physics engine or the learning algorithm in the browser.</li>
+        <li>It does not modify checkpoints, levels or policy weights.</li>
+        <li>It does not claim a learned parkour behaviour that the saved evaluations do not show.</li>
+      </ul>
+      <h3>CLI equivalents</h3>
+      <pre class="code">parkour list-levels
+parkour train --all --steps 1000000 --envs 4 --run-id adaptive-01
+parkour evaluate --checkpoint runs/adaptive-01/checkpoints/best.npz --all
+parkour watch --checkpoint runs/adaptive-01/checkpoints/best.npz --level level-03-small-hops
+parkour benchmark --envs 1,2,4 --steps 300</pre>
+      <p class="muted" id="about-versions"></p>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  <span>AI Parkour Lab · local-first research tool</span>
+  <span id="footer-runs" class="muted"></span>
+</footer>
+
+<script type="module" src="/static/app.js"></script>
+</body>
+</html>

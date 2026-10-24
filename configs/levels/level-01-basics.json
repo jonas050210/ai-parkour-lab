@@ -3,7 +3,16 @@
   "id": "level-01-basics",
   "title": "First Steps",
   "order": 1,
-  "summary": "A short, safe course for validating balance, contact, and forward progress before adding jumps or hazards.",
+  "difficulty": 1,
+  "split": "train",
+  "tags": [
+    "flat",
+    "step",
+    "starter"
+  ],
+  "summary": "A short flat runway with one low step: validate balance, contact and forward progress before adding gaps.",
+  "time_limit_seconds": 20.0,
+  "par_time_seconds": 9.0,
   "units": {
     "distance": "m",
     "angle": "degree",
@@ -11,31 +20,61 @@
     "forward_axis": "+x"
   },
   "spawn": {
-    "position": [0.0, 0.0, 0.95],
+    "position": [
+      0.0,
+      0.0,
+      0.94
+    ],
     "yaw_degrees": 0.0
   },
   "finish": {
-    "position": [8.0, 0.0, 0.95],
-    "radius": 0.8
+    "position": [
+      6.0,
+      0.0,
+      0.92
+    ],
+    "radius": 0.9
   },
   "bounds": {
-    "minimum": [-2.0, -3.0, -1.0],
-    "maximum": [10.0, 3.0, 5.0]
+    "minimum": [
+      -3.5,
+      -4.0,
+      -3.0
+    ],
+    "maximum": [
+      9.0,
+      4.0,
+      5.0
+    ]
   },
   "obstacles": [
     {
       "id": "runway",
       "kind": "platform",
-      "position": [4.0, 0.0, -0.1],
-      "size": [12.0, 6.0, 0.2],
-      "hazard": false
+      "position": [
+        2.75,
+        0.0,
+        -0.2
+      ],
+      "size": [
+        3.75,
+        1.2,
+        0.2
+      ]
     },
     {
       "id": "low-step",
       "kind": "step",
-      "position": [4.0, 0.0, 0.12],
-      "size": [0.6, 1.4, 0.24],
-      "hazard": false
+      "position": [
+        3.1,
+        0.0,
+        -0.15
+      ],
+      "size": [
+        0.3,
+        1.2,
+        0.25
+      ]
     }
   ]
 }

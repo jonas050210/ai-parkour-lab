@@ -1,0 +1,206 @@
+{
+  "schema_version": 1,
+  "id": "level-22-heldout-ledges",
+  "title": "Held-out Ledges",
+  "order": 22,
+  "difficulty": 5,
+  "split": "held-out",
+  "tags": [
+    "held-out",
+    "precision",
+    "height"
+  ],
+  "summary": "Unseen generalisation course: four rising 80 cm pads with gaps, then a drop.",
+  "time_limit_seconds": 40.0,
+  "par_time_seconds": 20.0,
+  "units": {
+    "distance": "m",
+    "angle": "degree",
+    "up_axis": "+z",
+    "forward_axis": "+x"
+  },
+  "spawn": {
+    "position": [
+      0.0,
+      0.0,
+      0.94
+    ],
+    "yaw_degrees": 0.0
+  },
+  "finish": {
+    "position": [
+      8.8,
+      0.0,
+      0.92
+    ],
+    "radius": 0.9
+  },
+  "bounds": {
+    "minimum": [
+      -3.5,
+      -4.0,
+      -3.0
+    ],
+    "maximum": [
+      11.9,
+      4.0,
+      5.0
+    ]
+  },
+  "obstacles": [
+    {
+      "id": "start",
+      "kind": "platform",
+      "position": [
+        0.4,
+        0.0,
+        -0.2
+      ],
+      "size": [
+        1.4,
+        1.0,
+        0.2
+      ]
+    },
+    {
+      "id": "gap-1",
+      "kind": "gap",
+      "position": [
+        2.0,
+        0.0,
+        0.0
+      ],
+      "size": [
+        0.2,
+        0.5,
+        0.02
+      ]
+    },
+    {
+      "id": "pad-1",
+      "kind": "rail",
+      "position": [
+        2.625,
+        0.0,
+        -0.2
+      ],
+      "size": [
+        0.425,
+        0.4,
+        0.2
+      ]
+    },
+    {
+      "id": "gap-2",
+      "kind": "gap",
+      "position": [
+        3.25,
+        0.0,
+        0.0
+      ],
+      "size": [
+        0.2,
+        0.4,
+        0.02
+      ]
+    },
+    {
+      "id": "pad-2",
+      "kind": "rail",
+      "position": [
+        3.875,
+        0.0,
+        -0.14
+      ],
+      "size": [
+        0.425,
+        0.4,
+        0.26
+      ]
+    },
+    {
+      "id": "gap-3",
+      "kind": "gap",
+      "position": [
+        4.5,
+        0.0,
+        0.0
+      ],
+      "size": [
+        0.2,
+        0.4,
+        0.02
+      ]
+    },
+    {
+      "id": "pad-3",
+      "kind": "rail",
+      "position": [
+        5.125,
+        0.0,
+        -0.08
+      ],
+      "size": [
+        0.425,
+        0.4,
+        0.32
+      ]
+    },
+    {
+      "id": "gap-4",
+      "kind": "gap",
+      "position": [
+        5.75,
+        0.0,
+        0.0
+      ],
+      "size": [
+        0.2,
+        0.4,
+        0.02
+      ]
+    },
+    {
+      "id": "pad-4",
+      "kind": "rail",
+      "position": [
+        6.375,
+        0.0,
+        -0.02
+      ],
+      "size": [
+        0.425,
+        0.4,
+        0.38
+      ]
+    },
+    {
+      "id": "gap-5",
+      "kind": "gap",
+      "position": [
+        7.0,
+        0.0,
+        0.0
+      ],
+      "size": [
+        0.2,
+        0.5,
+        0.02
+      ]
+    },
+    {
+      "id": "end",
+      "kind": "platform",
+      "position": [
+        8.3,
+        0.0,
+        -0.2
+      ],
+      "size": [
+        1.1,
+        1.0,
+        0.2
+      ]
+    }
+  ]
+}

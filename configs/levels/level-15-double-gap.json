@@ -1,0 +1,150 @@
+{
+  "schema_version": 1,
+  "id": "level-15-double-gap",
+  "title": "Double Gap",
+  "order": 15,
+  "difficulty": 4,
+  "split": "train",
+  "tags": [
+    "gap",
+    "jump",
+    "chained"
+  ],
+  "summary": "Three 70-75 cm gaps with short landings: chained jumps without resetting posture.",
+  "time_limit_seconds": 34.0,
+  "par_time_seconds": 16.0,
+  "units": {
+    "distance": "m",
+    "angle": "degree",
+    "up_axis": "+z",
+    "forward_axis": "+x"
+  },
+  "spawn": {
+    "position": [
+      0.0,
+      0.0,
+      0.94
+    ],
+    "yaw_degrees": 0.0
+  },
+  "finish": {
+    "position": [
+      9.8,
+      0.0,
+      0.92
+    ],
+    "radius": 0.9
+  },
+  "bounds": {
+    "minimum": [
+      -3.5,
+      -4.0,
+      -3.0
+    ],
+    "maximum": [
+      12.9,
+      4.0,
+      5.0
+    ]
+  },
+  "obstacles": [
+    {
+      "id": "start",
+      "kind": "platform",
+      "position": [
+        0.9,
+        0.0,
+        -0.2
+      ],
+      "size": [
+        1.9,
+        1.2,
+        0.2
+      ]
+    },
+    {
+      "id": "gap-1",
+      "kind": "gap",
+      "position": [
+        3.175,
+        0.0,
+        0.0
+      ],
+      "size": [
+        0.375,
+        0.95,
+        0.02
+      ]
+    },
+    {
+      "id": "landing",
+      "kind": "platform",
+      "position": [
+        4.275,
+        0.0,
+        -0.2
+      ],
+      "size": [
+        0.725,
+        0.85,
+        0.2
+      ]
+    },
+    {
+      "id": "gap-2",
+      "kind": "gap",
+      "position": [
+        5.375,
+        0.0,
+        0.0
+      ],
+      "size": [
+        0.375,
+        0.85,
+        0.02
+      ]
+    },
+    {
+      "id": "middle",
+      "kind": "platform",
+      "position": [
+        6.575,
+        0.0,
+        -0.2
+      ],
+      "size": [
+        0.825,
+        0.8,
+        0.2
+      ]
+    },
+    {
+      "id": "gap-3",
+      "kind": "gap",
+      "position": [
+        7.75,
+        0.0,
+        0.0
+      ],
+      "size": [
+        0.35,
+        0.8,
+        0.02
+      ]
+    },
+    {
+      "id": "end",
+      "kind": "platform",
+      "position": [
+        9.25,
+        0.0,
+        -0.2
+      ],
+      "size": [
+        1.15,
+        1.2,
+        0.2
+      ]
+    }
+  ]
+}

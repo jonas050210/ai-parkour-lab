@@ -1,0 +1,121 @@
+{
+  "schema_version": 1,
+  "id": "level-13-broad-jump",
+  "title": "Broad Jump",
+  "order": 13,
+  "difficulty": 4,
+  "split": "train",
+  "tags": [
+    "gap",
+    "jump"
+  ],
+  "summary": "A 90 cm and an 80 cm gap: full extension jumps with a controlled landing.",
+  "time_limit_seconds": 30.0,
+  "par_time_seconds": 14.0,
+  "units": {
+    "distance": "m",
+    "angle": "degree",
+    "up_axis": "+z",
+    "forward_axis": "+x"
+  },
+  "spawn": {
+    "position": [
+      0.0,
+      0.0,
+      0.94
+    ],
+    "yaw_degrees": 0.0
+  },
+  "finish": {
+    "position": [
+      8.6,
+      0.0,
+      0.92
+    ],
+    "radius": 0.9
+  },
+  "bounds": {
+    "minimum": [
+      -3.5,
+      -4.0,
+      -3.0
+    ],
+    "maximum": [
+      11.7,
+      4.0,
+      5.0
+    ]
+  },
+  "obstacles": [
+    {
+      "id": "start",
+      "kind": "platform",
+      "position": [
+        1.0,
+        0.0,
+        -0.2
+      ],
+      "size": [
+        2.0,
+        1.2,
+        0.2
+      ]
+    },
+    {
+      "id": "gap-1",
+      "kind": "gap",
+      "position": [
+        3.45,
+        0.0,
+        0.0
+      ],
+      "size": [
+        0.45,
+        1.1,
+        0.02
+      ]
+    },
+    {
+      "id": "middle",
+      "kind": "platform",
+      "position": [
+        4.95,
+        0.0,
+        -0.2
+      ],
+      "size": [
+        1.05,
+        1.0,
+        0.2
+      ]
+    },
+    {
+      "id": "gap-2",
+      "kind": "gap",
+      "position": [
+        6.4,
+        0.0,
+        0.0
+      ],
+      "size": [
+        0.4,
+        1.0,
+        0.02
+      ]
+    },
+    {
+      "id": "end",
+      "kind": "platform",
+      "position": [
+        8.0,
+        0.0,
+        -0.2
+      ],
+      "size": [
+        1.2,
+        1.2,
+        0.2
+      ]
+    }
+  ]
+}

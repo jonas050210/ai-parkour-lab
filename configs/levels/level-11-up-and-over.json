@@ -1,0 +1,163 @@
+{
+  "schema_version": 1,
+  "id": "level-11-up-and-over",
+  "title": "Up and Over",
+  "order": 11,
+  "difficulty": 3,
+  "split": "train",
+  "tags": [
+    "stairs",
+    "elevation"
+  ],
+  "summary": "Climb a 50 cm block in three coarse steps, cross it and drop down the far side.",
+  "time_limit_seconds": 30.0,
+  "par_time_seconds": 14.0,
+  "units": {
+    "distance": "m",
+    "angle": "degree",
+    "up_axis": "+z",
+    "forward_axis": "+x"
+  },
+  "spawn": {
+    "position": [
+      0.0,
+      0.0,
+      0.94
+    ],
+    "yaw_degrees": 0.0
+  },
+  "finish": {
+    "position": [
+      8.0,
+      0.0,
+      0.92
+    ],
+    "radius": 0.85
+  },
+  "bounds": {
+    "minimum": [
+      -3.5,
+      -4.0,
+      -3.0
+    ],
+    "maximum": [
+      11.1,
+      4.0,
+      5.0
+    ]
+  },
+  "obstacles": [
+    {
+      "id": "start",
+      "kind": "platform",
+      "position": [
+        0.7,
+        0.0,
+        -0.2
+      ],
+      "size": [
+        1.7,
+        1.2,
+        0.2
+      ]
+    },
+    {
+      "id": "rise-1",
+      "kind": "step",
+      "position": [
+        2.65,
+        0.0,
+        -0.12
+      ],
+      "size": [
+        0.25,
+        1.1,
+        0.28
+      ]
+    },
+    {
+      "id": "rise-2",
+      "kind": "step",
+      "position": [
+        3.15,
+        0.0,
+        -0.04
+      ],
+      "size": [
+        0.25,
+        1.1,
+        0.36
+      ]
+    },
+    {
+      "id": "rise-3",
+      "kind": "step",
+      "position": [
+        3.65,
+        0.0,
+        0.04
+      ],
+      "size": [
+        0.25,
+        1.1,
+        0.44
+      ]
+    },
+    {
+      "id": "plateau",
+      "kind": "platform",
+      "position": [
+        4.65,
+        0.0,
+        0.05
+      ],
+      "size": [
+        0.75,
+        1.1,
+        0.45
+      ]
+    },
+    {
+      "id": "drop-1",
+      "kind": "step",
+      "position": [
+        5.65,
+        0.0,
+        -0.04
+      ],
+      "size": [
+        0.25,
+        1.1,
+        0.36
+      ]
+    },
+    {
+      "id": "drop-2",
+      "kind": "step",
+      "position": [
+        6.15,
+        0.0,
+        -0.12
+      ],
+      "size": [
+        0.25,
+        1.1,
+        0.28
+      ]
+    },
+    {
+      "id": "end",
+      "kind": "platform",
+      "position": [
+        7.5,
+        0.0,
+        -0.2
+      ],
+      "size": [
+        1.1,
+        1.2,
+        0.2
+      ]
+    }
+  ]
+}

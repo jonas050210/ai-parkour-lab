@@ -1,0 +1,178 @@
+{
+  "schema_version": 1,
+  "id": "level-12-narrow-ledges",
+  "title": "Narrow Ledges",
+  "order": 12,
+  "difficulty": 3,
+  "split": "train",
+  "tags": [
+    "precision",
+    "narrow",
+    "gap"
+  ],
+  "summary": "Hop between ledges only 60-70 cm wide with 35 cm gaps.",
+  "time_limit_seconds": 32.0,
+  "par_time_seconds": 15.0,
+  "units": {
+    "distance": "m",
+    "angle": "degree",
+    "up_axis": "+z",
+    "forward_axis": "+x"
+  },
+  "spawn": {
+    "position": [
+      0.0,
+      0.0,
+      0.94
+    ],
+    "yaw_degrees": 0.0
+  },
+  "finish": {
+    "position": [
+      8.0,
+      0.0,
+      0.92
+    ],
+    "radius": 0.9
+  },
+  "bounds": {
+    "minimum": [
+      -3.5,
+      -4.0,
+      -3.0
+    ],
+    "maximum": [
+      11.1,
+      4.0,
+      5.0
+    ]
+  },
+  "obstacles": [
+    {
+      "id": "start",
+      "kind": "platform",
+      "position": [
+        0.5,
+        0.0,
+        -0.2
+      ],
+      "size": [
+        1.5,
+        1.1,
+        0.2
+      ]
+    },
+    {
+      "id": "gap-1",
+      "kind": "gap",
+      "position": [
+        2.175,
+        0.0,
+        0.0
+      ],
+      "size": [
+        0.175,
+        0.4,
+        0.02
+      ]
+    },
+    {
+      "id": "ledge-1",
+      "kind": "platform",
+      "position": [
+        2.925,
+        0.0,
+        -0.2
+      ],
+      "size": [
+        0.575,
+        0.35,
+        0.2
+      ]
+    },
+    {
+      "id": "gap-2",
+      "kind": "gap",
+      "position": [
+        3.675,
+        0.0,
+        0.0
+      ],
+      "size": [
+        0.175,
+        0.35,
+        0.02
+      ]
+    },
+    {
+      "id": "ledge-2",
+      "kind": "platform",
+      "position": [
+        4.425,
+        0.0,
+        -0.2
+      ],
+      "size": [
+        0.575,
+        0.325,
+        0.2
+      ]
+    },
+    {
+      "id": "gap-3",
+      "kind": "gap",
+      "position": [
+        5.175,
+        0.0,
+        0.0
+      ],
+      "size": [
+        0.175,
+        0.3,
+        0.02
+      ]
+    },
+    {
+      "id": "ledge-3",
+      "kind": "rail",
+      "position": [
+        5.925,
+        0.0,
+        -0.2
+      ],
+      "size": [
+        0.575,
+        0.3,
+        0.2
+      ]
+    },
+    {
+      "id": "gap-4",
+      "kind": "gap",
+      "position": [
+        6.675,
+        0.0,
+        0.0
+      ],
+      "size": [
+        0.175,
+        0.3,
+        0.02
+      ]
+    },
+    {
+      "id": "end",
+      "kind": "platform",
+      "position": [
+        7.725,
+        0.0,
+        -0.2
+      ],
+      "size": [
+        0.875,
+        1.0,
+        0.2
+      ]
+    }
+  ]
+}

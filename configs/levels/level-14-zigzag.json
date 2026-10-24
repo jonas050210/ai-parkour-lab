@@ -1,0 +1,206 @@
+{
+  "schema_version": 1,
+  "id": "level-14-zigzag",
+  "title": "Zigzag",
+  "order": 14,
+  "difficulty": 4,
+  "split": "train",
+  "tags": [
+    "lateral",
+    "jump",
+    "gap"
+  ],
+  "summary": "Alternating left and right platforms with 40 cm gaps force turning jumps.",
+  "time_limit_seconds": 34.0,
+  "par_time_seconds": 17.0,
+  "units": {
+    "distance": "m",
+    "angle": "degree",
+    "up_axis": "+z",
+    "forward_axis": "+x"
+  },
+  "spawn": {
+    "position": [
+      0.0,
+      0.0,
+      0.94
+    ],
+    "yaw_degrees": 0.0
+  },
+  "finish": {
+    "position": [
+      9.4,
+      0.0,
+      0.92
+    ],
+    "radius": 0.9
+  },
+  "bounds": {
+    "minimum": [
+      -3.5,
+      -4.0,
+      -3.0
+    ],
+    "maximum": [
+      12.5,
+      4.0,
+      5.0
+    ]
+  },
+  "obstacles": [
+    {
+      "id": "start",
+      "kind": "platform",
+      "position": [
+        0.5,
+        0.0,
+        -0.2
+      ],
+      "size": [
+        1.5,
+        1.2,
+        0.2
+      ]
+    },
+    {
+      "id": "gap-1",
+      "kind": "gap",
+      "position": [
+        2.15,
+        0.0,
+        0.0
+      ],
+      "size": [
+        0.15,
+        0.55,
+        0.02
+      ]
+    },
+    {
+      "id": "platform-1",
+      "kind": "platform",
+      "position": [
+        2.85,
+        0.65,
+        -0.2
+      ],
+      "size": [
+        0.55,
+        0.55,
+        0.2
+      ]
+    },
+    {
+      "id": "gap-2",
+      "kind": "gap",
+      "position": [
+        3.55,
+        0.0,
+        0.0
+      ],
+      "size": [
+        0.15,
+        0.55,
+        0.02
+      ]
+    },
+    {
+      "id": "platform-2",
+      "kind": "platform",
+      "position": [
+        4.25,
+        -0.65,
+        -0.2
+      ],
+      "size": [
+        0.55,
+        0.55,
+        0.2
+      ]
+    },
+    {
+      "id": "gap-3",
+      "kind": "gap",
+      "position": [
+        4.95,
+        0.0,
+        0.0
+      ],
+      "size": [
+        0.15,
+        0.55,
+        0.02
+      ]
+    },
+    {
+      "id": "platform-3",
+      "kind": "platform",
+      "position": [
+        5.65,
+        0.65,
+        -0.2
+      ],
+      "size": [
+        0.55,
+        0.55,
+        0.2
+      ]
+    },
+    {
+      "id": "gap-4",
+      "kind": "gap",
+      "position": [
+        6.35,
+        0.0,
+        0.0
+      ],
+      "size": [
+        0.15,
+        0.55,
+        0.02
+      ]
+    },
+    {
+      "id": "platform-4",
+      "kind": "platform",
+      "position": [
+        7.05,
+        -0.65,
+        -0.2
+      ],
+      "size": [
+        0.55,
+        0.55,
+        0.2
+      ]
+    },
+    {
+      "id": "gap-5",
+      "kind": "gap",
+      "position": [
+        7.75,
+        0.0,
+        0.0
+      ],
+      "size": [
+        0.15,
+        0.55,
+        0.02
+      ]
+    },
+    {
+      "id": "end",
+      "kind": "platform",
+      "position": [
+        8.95,
+        0.0,
+        -0.2
+      ],
+      "size": [
+        1.05,
+        1.1,
+        0.2
+      ]
+    }
+  ]
+}

@@ -1,0 +1,150 @@
+{
+  "schema_version": 1,
+  "id": "level-18-rail-run",
+  "title": "Rail Run",
+  "order": 18,
+  "difficulty": 4,
+  "split": "train",
+  "tags": [
+    "narrow",
+    "height",
+    "balance"
+  ],
+  "summary": "Climb 36 cm, balance along a 30 cm wide elevated rail and descend safely.",
+  "time_limit_seconds": 38.0,
+  "par_time_seconds": 18.0,
+  "units": {
+    "distance": "m",
+    "angle": "degree",
+    "up_axis": "+z",
+    "forward_axis": "+x"
+  },
+  "spawn": {
+    "position": [
+      0.0,
+      0.0,
+      0.94
+    ],
+    "yaw_degrees": 0.0
+  },
+  "finish": {
+    "position": [
+      9.0,
+      0.0,
+      0.92
+    ],
+    "radius": 0.9
+  },
+  "bounds": {
+    "minimum": [
+      -3.5,
+      -4.0,
+      -3.0
+    ],
+    "maximum": [
+      12.1,
+      4.0,
+      5.0
+    ]
+  },
+  "obstacles": [
+    {
+      "id": "start",
+      "kind": "platform",
+      "position": [
+        0.6,
+        0.0,
+        -0.2
+      ],
+      "size": [
+        1.6,
+        1.1,
+        0.2
+      ]
+    },
+    {
+      "id": "rise-1",
+      "kind": "step",
+      "position": [
+        2.45,
+        0.0,
+        -0.11
+      ],
+      "size": [
+        0.25,
+        1.0,
+        0.29
+      ]
+    },
+    {
+      "id": "rise-2",
+      "kind": "step",
+      "position": [
+        2.95,
+        0.0,
+        -0.02
+      ],
+      "size": [
+        0.25,
+        1.0,
+        0.38
+      ]
+    },
+    {
+      "id": "rail",
+      "kind": "rail",
+      "position": [
+        4.9,
+        0.0,
+        0.05
+      ],
+      "size": [
+        1.7,
+        0.15,
+        0.45
+      ]
+    },
+    {
+      "id": "drop-1",
+      "kind": "step",
+      "position": [
+        6.85,
+        0.0,
+        -0.05
+      ],
+      "size": [
+        0.25,
+        1.0,
+        0.35
+      ]
+    },
+    {
+      "id": "drop-2",
+      "kind": "step",
+      "position": [
+        7.35,
+        0.0,
+        -0.14
+      ],
+      "size": [
+        0.25,
+        1.0,
+        0.26
+      ]
+    },
+    {
+      "id": "end",
+      "kind": "platform",
+      "position": [
+        8.6,
+        0.0,
+        -0.2
+      ],
+      "size": [
+        1.0,
+        1.1,
+        0.2
+      ]
+    }
+  ]
+}

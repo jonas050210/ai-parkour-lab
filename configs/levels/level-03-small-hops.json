@@ -1,0 +1,121 @@
+{
+  "schema_version": 1,
+  "id": "level-03-small-hops",
+  "title": "Small Hops",
+  "order": 3,
+  "difficulty": 2,
+  "split": "train",
+  "tags": [
+    "gap",
+    "hop"
+  ],
+  "summary": "Two 30 cm gaps: learn to step or hop across without losing balance.",
+  "time_limit_seconds": 24.0,
+  "par_time_seconds": 11.0,
+  "units": {
+    "distance": "m",
+    "angle": "degree",
+    "up_axis": "+z",
+    "forward_axis": "+x"
+  },
+  "spawn": {
+    "position": [
+      0.0,
+      0.0,
+      0.94
+    ],
+    "yaw_degrees": 0.0
+  },
+  "finish": {
+    "position": [
+      6.9,
+      0.0,
+      0.92
+    ],
+    "radius": 0.85
+  },
+  "bounds": {
+    "minimum": [
+      -3.5,
+      -4.0,
+      -3.0
+    ],
+    "maximum": [
+      9.9,
+      4.0,
+      5.0
+    ]
+  },
+  "obstacles": [
+    {
+      "id": "start",
+      "kind": "platform",
+      "position": [
+        0.8,
+        0.0,
+        -0.2
+      ],
+      "size": [
+        1.8,
+        1.2,
+        0.2
+      ]
+    },
+    {
+      "id": "gap-1",
+      "kind": "gap",
+      "position": [
+        2.75,
+        0.0,
+        0.0
+      ],
+      "size": [
+        0.15,
+        1.2,
+        0.02
+      ]
+    },
+    {
+      "id": "mid",
+      "kind": "platform",
+      "position": [
+        3.85,
+        0.0,
+        -0.2
+      ],
+      "size": [
+        0.95,
+        0.95,
+        0.2
+      ]
+    },
+    {
+      "id": "gap-2",
+      "kind": "gap",
+      "position": [
+        4.95,
+        0.0,
+        0.0
+      ],
+      "size": [
+        0.15,
+        0.95,
+        0.02
+      ]
+    },
+    {
+      "id": "end",
+      "kind": "platform",
+      "position": [
+        6.25,
+        0.0,
+        -0.2
+      ],
+      "size": [
+        1.15,
+        0.85,
+        0.2
+      ]
+    }
+  ]
+}

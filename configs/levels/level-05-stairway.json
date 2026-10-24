@@ -1,0 +1,205 @@
+{
+  "schema_version": 1,
+  "id": "level-05-stairway",
+  "title": "Stairway",
+  "order": 5,
+  "difficulty": 2,
+  "split": "train",
+  "tags": [
+    "stairs",
+    "elevation"
+  ],
+  "summary": "Climb five 14 cm stairs, cross the plateau and descend three more.",
+  "time_limit_seconds": 28.0,
+  "par_time_seconds": 14.0,
+  "units": {
+    "distance": "m",
+    "angle": "degree",
+    "up_axis": "+z",
+    "forward_axis": "+x"
+  },
+  "spawn": {
+    "position": [
+      0.0,
+      0.0,
+      0.94
+    ],
+    "yaw_degrees": 0.0
+  },
+  "finish": {
+    "position": [
+      8.4,
+      0.0,
+      0.92
+    ],
+    "radius": 0.9
+  },
+  "bounds": {
+    "minimum": [
+      -3.5,
+      -4.0,
+      -3.0
+    ],
+    "maximum": [
+      11.5,
+      4.0,
+      5.0
+    ]
+  },
+  "obstacles": [
+    {
+      "id": "start",
+      "kind": "platform",
+      "position": [
+        0.6,
+        0.0,
+        -0.2
+      ],
+      "size": [
+        1.6,
+        1.2,
+        0.2
+      ]
+    },
+    {
+      "id": "up-1",
+      "kind": "step",
+      "position": [
+        2.41,
+        0.0,
+        -0.13
+      ],
+      "size": [
+        0.21,
+        1.1,
+        0.27
+      ]
+    },
+    {
+      "id": "up-2",
+      "kind": "step",
+      "position": [
+        2.83,
+        0.0,
+        -0.06
+      ],
+      "size": [
+        0.21,
+        1.1,
+        0.34
+      ]
+    },
+    {
+      "id": "up-3",
+      "kind": "step",
+      "position": [
+        3.25,
+        0.0,
+        0.01
+      ],
+      "size": [
+        0.21,
+        1.1,
+        0.41
+      ]
+    },
+    {
+      "id": "up-4",
+      "kind": "step",
+      "position": [
+        3.67,
+        0.0,
+        0.08
+      ],
+      "size": [
+        0.21,
+        1.1,
+        0.48
+      ]
+    },
+    {
+      "id": "up-5",
+      "kind": "step",
+      "position": [
+        4.09,
+        0.0,
+        0.15
+      ],
+      "size": [
+        0.21,
+        1.1,
+        0.55
+      ]
+    },
+    {
+      "id": "plateau",
+      "kind": "platform",
+      "position": [
+        4.85,
+        0.0,
+        0.15
+      ],
+      "size": [
+        0.55,
+        1.1,
+        0.55
+      ]
+    },
+    {
+      "id": "down-1",
+      "kind": "step",
+      "position": [
+        5.61,
+        0.0,
+        0.15
+      ],
+      "size": [
+        0.21,
+        1.1,
+        0.55
+      ]
+    },
+    {
+      "id": "down-2",
+      "kind": "step",
+      "position": [
+        6.03,
+        0.0,
+        0.08
+      ],
+      "size": [
+        0.21,
+        1.1,
+        0.48
+      ]
+    },
+    {
+      "id": "down-3",
+      "kind": "step",
+      "position": [
+        6.45,
+        0.0,
+        0.01
+      ],
+      "size": [
+        0.21,
+        1.1,
+        0.41
+      ]
+    },
+    {
+      "id": "end",
+      "kind": "platform",
+      "position": [
+        7.83,
+        0.0,
+        -0.2
+      ],
+      "size": [
+        1.17,
+        1.2,
+        0.2
+      ]
+    }
+  ]
+}

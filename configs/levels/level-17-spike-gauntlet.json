@@ -1,0 +1,110 @@
+{
+  "schema_version": 1,
+  "id": "level-17-spike-gauntlet",
+  "title": "Spike Gauntlet",
+  "order": 17,
+  "difficulty": 4,
+  "split": "train",
+  "tags": [
+    "hazard",
+    "jump"
+  ],
+  "summary": "Three full-width 50 cm spike strips: jump each one and keep enough momentum for the next.",
+  "time_limit_seconds": 34.0,
+  "par_time_seconds": 16.0,
+  "units": {
+    "distance": "m",
+    "angle": "degree",
+    "up_axis": "+z",
+    "forward_axis": "+x"
+  },
+  "spawn": {
+    "position": [
+      0.0,
+      0.0,
+      0.94
+    ],
+    "yaw_degrees": 0.0
+  },
+  "finish": {
+    "position": [
+      9.4,
+      0.0,
+      0.92
+    ],
+    "radius": 0.9
+  },
+  "bounds": {
+    "minimum": [
+      -3.5,
+      -4.0,
+      -3.0
+    ],
+    "maximum": [
+      12.5,
+      4.0,
+      5.0
+    ]
+  },
+  "obstacles": [
+    {
+      "id": "runway",
+      "kind": "platform",
+      "position": [
+        4.5,
+        0.0,
+        -0.2
+      ],
+      "size": [
+        5.5,
+        1.5,
+        0.2
+      ]
+    },
+    {
+      "id": "spikes-1",
+      "kind": "spike_strip",
+      "position": [
+        2.75,
+        0.0,
+        -0.165
+      ],
+      "size": [
+        0.25,
+        1.4,
+        0.235
+      ],
+      "hazard": true
+    },
+    {
+      "id": "spikes-2",
+      "kind": "spike_strip",
+      "position": [
+        5.25,
+        0.0,
+        -0.165
+      ],
+      "size": [
+        0.25,
+        1.4,
+        0.235
+      ],
+      "hazard": true
+    },
+    {
+      "id": "spikes-3",
+      "kind": "spike_strip",
+      "position": [
+        7.75,
+        0.0,
+        -0.165
+      ],
+      "size": [
+        0.25,
+        1.4,
+        0.235
+      ],
+      "hazard": true
+    }
+  ]
+}
