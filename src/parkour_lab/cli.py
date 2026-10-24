@@ -495,9 +495,22 @@ def command_evaluate(args: argparse.Namespace) -> int:
     return 0
 
 
+def _run_store(value: str, runs_dir: str | Path) -> RunStore:
+    """Accept a run id (``walk-e``) or a path (``runs/walk-e``) everywhere.
+
+    ``compare`` did this while ``harness --run`` only accepted paths, so the same
+    argument meant two different things depending on the subcommand.
+    """
+
+    candidate = Path(value)
+    if candidate.is_dir():
+        return RunStore.load(candidate)
+    return RunStore.load(Path(runs_dir) / value)
+
+
 def command_compare(args: argparse.Namespace) -> int:
-    store_a = RunStore.load(Path(args.run_a) if Path(args.run_a).is_dir() else Path(args.runs_dir) / args.run_a)
-    store_b = RunStore.load(Path(args.run_b) if Path(args.run_b).is_dir() else Path(args.runs_dir) / args.run_b)
+    store_a = _run_store(args.run_a, args.runs_dir)
+    store_b = _run_store(args.run_b, args.runs_dir)
     comparison = compare_runs(store_a, store_b)
     if "error" in comparison:
         print(comparison["error"], file=sys.stderr)
@@ -775,7 +788,7 @@ def command_harness(args: argparse.Namespace) -> int:
     )
     if args.action == "plan":
         proposals = assistant.plan(
-            run_dir=Path(args.run) if args.run else None,
+            run_dir=_run_store(args.run, args.runs_dir).paths.root if args.run else None,
             target_levels=args.level or None,
         )
         print(json.dumps([proposal.to_dict() for proposal in proposals], indent=2))
@@ -784,7 +797,9 @@ def command_harness(args: argparse.Namespace) -> int:
         if not args.run:
             print("--run is required for probe", file=sys.stderr)
             return 1
-        report = assistant.probe(Path(args.run), runs_dir=args.runs_dir)
+        report = assistant.probe(
+            _run_store(args.run, args.runs_dir).paths.root, runs_dir=args.runs_dir
+        )
         print(json.dumps(report.to_dict(), indent=2))
         print(f"report: {report.report_path}", file=sys.stderr)
         return 0

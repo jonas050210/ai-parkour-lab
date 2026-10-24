@@ -395,3 +395,24 @@ def test_diagnose_command_explains_a_checkpoint(
     assert payload["episodes"] == 3  # default evaluation seeds
     assert {"success_rate", "mean_completion", "findings", "traces"} <= set(payload)
     assert len(payload["traces"]) == payload["episodes"]
+
+
+def test_harness_and_compare_accept_a_run_id_or_a_path(
+    trained: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The same `--run` value must work as an id (``cli-run``) and as a path."""
+
+    run_dir = trained / "cli-run"
+    assert main(["--runs-dir", str(trained), "harness", "plan", "--run", "cli-run",
+                 "--max-proposals", "1"]) == 0
+    by_id = json.loads(capsys.readouterr().out)
+    assert by_id and by_id[0]["evidence"]["run_id"] == "cli-run"
+
+    assert main(["--runs-dir", str(trained), "harness", "plan", "--run", str(run_dir),
+                 "--max-proposals", "1"]) == 0
+    by_path = json.loads(capsys.readouterr().out)
+    assert [p["title"] for p in by_path] == [p["title"] for p in by_id]
+
+    assert main(["--runs-dir", str(trained), "compare", "--run-a", "cli-run",
+                 "--run-b", str(run_dir)]) == 0
+    assert "level-01-basics" in capsys.readouterr().out
