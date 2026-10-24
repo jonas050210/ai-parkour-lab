@@ -79,6 +79,20 @@ those steps took 33 min after resuming at 1.44 M, i.e. ~1 780 steps/s on 2 vCPU)
 | All 20 training levels, 2 seeds each | 13.8 % mean completion, 0 % success; per level 6.3–14.8 % |
 | Explained variance / approx. KL | 0.98 / 0.016 (the learner is healthy; the task is not solved) |
 
+The plateau is a *reward-geometry* result, confirmed by a controlled counter-experiment. `walk-f`
+is the same recipe with survival priced up (fall penalty −20 instead of −2, alive/upright/height
+weights doubled) and 1.5 M steps:
+
+| Run | Fall penalty | Survival weights | Episode length | Completion (5 seeds) |
+|---|---|---|---|---|
+| `walk-e` | −2 | 1.0 / 1.5 / 2.0 | 3.55 s | 47.7 % |
+| `walk-f` | −20 | 2.0 / 2.5 / 2.5 | 7.64 s | 21.3 % |
+
+Both end at 0 % success. Pricing survival higher buys exactly what it says — the policy stands and
+shuffles (48 % of `walk-f` episodes now reach the 10 s cap, terminations flip from `collapsed` to
+`timeout`) — and buys it with progress. Neither setting makes the agent *walk*, so the missing
+ingredient is not a weight on the existing reward terms.
+
 **The policy plateaued, so this is not a sample-budget story alone.** Completion sat at 58.8 %
 at 1.68 M steps, 59.4 % at 3.40 M and 58.4 % at 5.0 M: 3.3 M further steps (~30 min of CPU) bought
 nothing. The learned behaviour is a fast, symmetric hop that covers ~3 m in 4.5 s at ~0.8 m/s
@@ -115,6 +129,9 @@ beyond "the level-01 policy transfers weakly and falls over": the 20-level sweep
 4. **Bigger feet / wider stance / coarser timestep** were tested as fixes for stability and were not
    the bottleneck at the time — but those measurements were taken while the action-span bug below
    was still active, so they need to be re-run with the current model.
+5. **Survival-first reward** (`walk-f`: fall penalty −20, survival weights doubled): the agent stopped
+   falling by mostly standing. 7.64 s episodes instead of 3.55 s, 21.3 % completion instead of
+   47.7 %, still 0 % success. Moving the survival/progress ratio only moves the plateau.
 
 ## 5. Bugs found and fixed (with regression tests)
 
@@ -163,10 +180,9 @@ parkour dashboard --port 8000     # http://localhost:8000 → Replay tab
    explanations: it is not evaluation noise (deterministic ≈ stochastic) and it is not sample
    budget alone (3.3 M extra steps changed nothing). The remaining suspects are reward geometry and
    exploration structure. Concrete next experiments, in the order I would run them:
-   * **Reward geometry for survival.** `walk-e` pays 6/m of progress and only −2 for falling, so
-     "hop 3 m and collapse" is a local optimum. The first follow-up (`walk-f`, 1.5 M steps) raises
-     the fall penalty to 20 and doubles the alive/upright/height weights to test whether the
-     collapse is a reward-basin artifact or a control limitation.
+   * **Reward geometry is exhausted as a lever.** `walk-e` (fall −2) hops 3 m and collapses;
+     `walk-f` (fall −20, survival doubled) stands and shuffles for 7.6 s instead. Both score 0 %.
+     Re-tuning these weights again is not the next move — the missing signal is *how* to step.
    * **Reference gait tracking** instead of pure exploration: the CPG search over ~2 000 open-loop
      parameter sets peaked at 0.36 m, so the reference should come from a scripted quasi-static
      walk validated in the *enclosed* loop, or from a public retargeted mocap clip.
