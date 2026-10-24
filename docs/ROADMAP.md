@@ -6,7 +6,7 @@ Phases are ordered to expose physics, measurement, and compute risks before addi
 
 | Phase | State | Evidence |
 |---|---|---|
-| 0 — Research and foundation | **done** | docs, schema, starter config, 141 passing tests |
+| 0 — Research and foundation | **done** | docs, schema, starter config, 143 passing tests |
 | 1 — One-world physics and measurement | **done** | 25-DoF humanoid, `ParkourEnv`, contact/termination/reward diagnostics, `tests/test_environment.py` (18 tests) |
 | 2 — Fixed course suite and reproducible evaluation | **done** | 22 validated levels, deterministic multi-seed evaluation with checkpoint dynamics, `parkour compare`, held-out split |
 | 3 — Small-batch PPO baseline | **done, goal not reached** | PPO trains, resumes, checkpoints and evaluates reproducibly; it learns standing and 14–21 % of level-01 but never completes a course. See [STATUS.md](STATUS.md#learning-status) |

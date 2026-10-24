@@ -28,6 +28,7 @@ import shutil
 import socket
 import subprocess
 import sys
+import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from importlib import metadata as importlib_metadata
@@ -419,17 +420,51 @@ def pid_alive(pid: int | None) -> bool:
     return True
 
 
-def effective_status(summary: dict[str, Any]) -> str:
+def effective_status(
+    summary: dict[str, Any],
+    *,
+    last_activity: float | None = None,
+    now: float | None = None,
+    stale_after_seconds: float = 900.0,
+) -> str:
     """A run marked ``running`` whose process died is reported as ``interrupted``.
 
     Training processes are killed (Ctrl-C, OOM, a laptop suspending) often enough that a
     permanently "running" run would mislead both the CLI and the dashboard.
+
+    Runs recorded before pid tracking existed have no ``pid``.  For those, ``last_activity``
+    (the newest metrics-file mtime) decides: a run whose metrics have not moved for
+    ``stale_after_seconds`` is also interrupted.
     """
 
     status = str(summary.get("status", "unknown"))
-    if status == "running" and "pid" in summary and not pid_alive(summary.get("pid")):
+    if status != "running":
+        return status
+    if "pid" in summary:
+        return "running" if pid_alive(summary.get("pid")) else "interrupted"
+    if last_activity is None:
+        return status
+    reference = time.time() if now is None else now
+    if reference - float(last_activity) > stale_after_seconds:
         return "interrupted"
     return status
+
+
+def last_activity(path: Path) -> float | None:
+    """Newest mtime among the artefacts a running trainer keeps rewriting."""
+
+    newest: float | None = None
+    candidates = [path / "summary.json"]
+    metrics = path / "metrics"
+    if metrics.exists():
+        candidates.extend(metrics.glob("*"))
+    for candidate in candidates:
+        try:
+            mtime = candidate.stat().st_mtime
+        except OSError:
+            continue
+        newest = mtime if newest is None else max(newest, mtime)
+    return newest
 
 
 def list_runs(runs_dir: Path | str = DEFAULT_RUNS_DIR) -> list[dict[str, Any]]:
@@ -464,15 +499,22 @@ def list_runs(runs_dir: Path | str = DEFAULT_RUNS_DIR) -> list[dict[str, Any]]:
                 ),
             )
         best_overall = (best_eval or {}).get("aggregate", {}).get("overall", {})
+        # ``summary.total_steps`` is the *budget* recorded at startup, so a live run would
+        # otherwise look finished.  The append-only training CSV holds the real progress.
+        last_row = _last_csv_row(child / "metrics" / "training.csv")
+        activity = last_activity(child)
+        progress_steps = _as_int(last_row.get("total_steps"))
         runs.append(
             {
                 "run_id": child.name,
                 "path": str(child),
                 "created_utc": summary.get("created_utc"),
                 "updated_utc": summary.get("updated_utc"),
-                "status": effective_status(summary),
+                "status": effective_status(summary, last_activity=activity),
                 "recorded_status": summary.get("status", "unknown"),
                 "total_steps": int(summary.get("total_steps", 0) or 0),
+                "target_steps": int(config.get("total_steps", 0) or 0),
+                "progress_steps": progress_steps,
                 "best_eval_success": best_overall.get("success_rate"),
                 "best_eval_completion": best_overall.get("mean_completion"),
                 "curriculum": config.get("curriculum"),
@@ -503,6 +545,26 @@ def delete_run(run_root: Path | str, *, runs_dir: Path | str = DEFAULT_RUNS_DIR)
     if base not in root.parents:
         raise ValueError("refusing to delete a directory outside the runs directory")
     shutil.rmtree(root)
+
+
+def _last_csv_row(path: Path) -> dict[str, Any]:
+    """Return the last data row of an append-only CSV, or ``{}`` when it is missing."""
+
+    last: dict[str, Any] = {}
+    try:
+        with path.open("r", encoding="utf-8", newline="") as handle:
+            for row in csv.DictReader(handle):
+                last = dict(row)
+    except FileNotFoundError:
+        return {}
+    return last
+
+
+def _as_int(value: Any) -> int:
+    try:
+        return int(float(value))
+    except (TypeError, ValueError):
+        return 0
 
 
 def _read_csv(path: Path) -> list[dict[str, Any]]:
@@ -552,7 +614,10 @@ __all__ = [
     "delete_run",
     "environment_provenance",
     "git_revision",
+    "effective_status",
+    "last_activity",
     "list_runs",
+    "pid_alive",
     "read_json",
     "utc_timestamp",
 ]

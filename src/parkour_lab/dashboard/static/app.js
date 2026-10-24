@@ -670,7 +670,11 @@ function renderRunList() {
       el("div", { class: "rid", text: run.run_id }),
       el("div", { class: "row" }, [
         el("span", { text: run.status }),
-        el("span", { text: `${fmt.int(run.total_steps)} steps` }),
+        el("span", {
+          text: run.progress_steps
+            ? `${fmt.int(run.progress_steps)} / ${fmt.int(run.target_steps)} steps`
+            : `${fmt.int(run.total_steps)} steps`,
+        }),
         el("span", { text: fmt.pct(run.best_eval_success) }),
       ]),
       el("div", { class: "row" }, [
@@ -733,7 +737,7 @@ function renderRunDetail(detail) {
     stat(
       "Training steps",
       fmt.int(rows.length ? rows[rows.length - 1].total_steps : summary.total_steps),
-      `${fmt.int(config.num_envs)} envs`,
+      `of ${fmt.int(config.total_steps)} · ${fmt.int(config.num_envs)} envs`,
     ),
     stat("Episodes", fmt.int(aggregate.episodes), `${Object.keys(aggregate.terminations || {}).length} end reasons`),
     stat("Levels", fmt.int((config.level_ids || []).length), config.curriculum || ""),

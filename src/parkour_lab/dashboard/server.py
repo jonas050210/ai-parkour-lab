@@ -580,12 +580,16 @@ def create_app(
                     "level_ids": config.get("level_ids", run.get("level_ids", [])),
                     "curriculum": config.get("curriculum") or run.get("curriculum"),
                     "total_steps": run.get("total_steps", summary.get("total_steps", 0)),
-                    "best_eval_success": summary.get(
-                        "best_eval_success", run.get("best_eval_success")
-                    ),
-                    "best_eval_completion": summary.get(
-                        "best_eval_completion", run.get("best_eval_completion")
-                    ),
+                    # Steps actually trained vs the configured budget, so a live run does not
+                    # look finished just because ``summary.total_steps`` holds the target.
+                    "target_steps": run.get("target_steps", summary.get("total_steps", 0)),
+                    "progress_steps": run.get("progress_steps", 0),
+                    "best_eval_success": run.get("best_eval_success")
+                    if run.get("best_eval_success") is not None
+                    else summary.get("best_eval_success"),
+                    "best_eval_completion": run.get("best_eval_completion")
+                    if run.get("best_eval_completion") is not None
+                    else summary.get("best_eval_completion"),
                     "num_envs": config.get("num_envs", run.get("num_envs")),
                     "workers": config.get("workers", run.get("workers")),
                     "seed": config.get("seed", run.get("seed")),

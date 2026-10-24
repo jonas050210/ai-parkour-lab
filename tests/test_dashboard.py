@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import gzip
 import json
+import os
 from pathlib import Path
 
 import pytest
@@ -451,3 +452,44 @@ def test_missing_runs_directory_is_created(tmp_path: Path) -> None:
     with TestClient(app) as test_client:
         assert test_client.get("/api/runs").json() == {"runs": []}
     assert runs_dir.is_dir()
+
+
+def test_run_list_separates_progress_from_the_step_budget(tmp_path: Path) -> None:
+    """A live run must not look finished just because the summary holds its target."""
+
+    runs_dir = tmp_path / "runs"
+    store = _make_run(runs_dir, run_id="live-01")
+    store.write_json("config.json", {**store.read_config(), "total_steps": 1_000_000})
+    # What the trainer writes at startup: the budget, plus its own pid.
+    store.update_summary(status="running", total_steps=1_000_000, pid=os.getpid())
+    app = create_app(runs_dir=runs_dir, levels_dir=DEFAULT_LEVELS_DIR)
+    with TestClient(app) as test_client:
+        run = test_client.get("/api/runs").json()["runs"][0]
+    # Four training rows at 1024..4096 steps, budget of 1M: progress is what is real.
+    assert run["progress_steps"] == 4096
+    assert run["target_steps"] == 1_000_000
+    assert run["total_steps"] == 1_000_000
+
+
+def test_running_run_without_pid_goes_stale(tmp_path: Path) -> None:
+    """Runs recorded before pid tracking existed must still be able to look interrupted."""
+
+    from parkour_lab.storage import effective_status, last_activity, list_runs
+
+    runs_dir = tmp_path / "runs"
+    store = _make_run(runs_dir, run_id="old-01")
+    store.update_summary(status="running")
+    summary = store.read_summary()
+    assert "pid" not in summary
+    # Freshly written metrics: still plausible as a live run.
+    assert effective_status(summary, last_activity=last_activity(store.paths.root)) == "running"
+    # Two hours without touching a metrics file: reported as interrupted.
+    stale = last_activity(store.paths.root) - 2 * 3600
+    assert effective_status(summary, last_activity=stale) == "interrupted"
+    oldest = last_activity(store.paths.root) - 2 * 3600
+    for path in store.paths.metrics_dir.glob("*"):
+        os.utime(path, (oldest, oldest))
+    os.utime(store.paths.summary, (oldest, oldest))
+    listed = {run["run_id"]: run for run in list_runs(runs_dir)}
+    assert listed["old-01"]["status"] == "interrupted"
+    assert listed["old-01"]["recorded_status"] == "running"

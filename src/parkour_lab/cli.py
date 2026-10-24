@@ -487,14 +487,17 @@ def command_runs(args: argparse.Namespace) -> int:
     rows = []
     for run in runs:
         summary = run["summary"]
+        progress = run.get("progress_steps") or 0
+        target = run.get("target_steps") or run.get("total_steps") or 0
+        best = run.get("best_eval_success")
+        if best is None:
+            best = summary.get("best_eval_success")
         rows.append(
             [
                 run["run_id"],
                 run["status"],
-                summary.get("total_steps", ""),
-                f"{float(summary.get('best_eval_success', 0.0)) * 100:.1f}%"
-                if summary.get("best_eval_success") is not None
-                else "",
+                f"{progress:,} / {target:,}" if target else f"{progress:,}",
+                f"{float(best) * 100:.1f}%" if best is not None else "",
                 len(run["checkpoints"]),
                 run["replay_count"],
                 (summary.get("updated_utc") or "")[:19],
