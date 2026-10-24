@@ -20,7 +20,7 @@ and how to reproduce every claim. It is the document to read before trusting any
 | Bounded CEM over reward/PPO knobs | `parkour evolve` | `tests/test_research_tools.py`, `tests/test_cli.py` |
 | Restricted research assistant | `parkour harness status/plan/probe` | `tests/test_research_tools.py` |
 
-Test suite: **144 tests** (`pytest`, ~42 s) and `ruff check src tests` clean.
+Test suite: **145 tests** (`pytest`, ~42 s) and `ruff check src tests` clean.
 
 ## 2. The model and the task
 

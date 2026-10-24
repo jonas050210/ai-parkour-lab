@@ -221,6 +221,49 @@ def test_compare_two_runs(run_dir: Path) -> None:
     assert comparison["overall"]["delta_success_rate"] == 0.0
 
 
+def test_compare_two_runs_uses_progress_when_success_ties(tmp_path: Path) -> None:
+    """Both runs never succeeded, so the comparison must rank them by completion."""
+
+    def make(run_id: str, completion: float) -> RunStore:
+        store = RunStore.create(
+            tmp_path, run_id=run_id, config={"level_ids": ["level-01-basics"], "total_steps": 1024}
+        )
+        for iteration in range(2):
+            store.write_json(
+                f"evaluation/{iteration:05d}.json",
+                {
+                    "iteration": iteration,
+                    "total_steps": 512 * (iteration + 1),
+                    "aggregate": {
+                        "overall": {
+                            "episodes": 2,
+                            "success_rate": 0.0,
+                            "mean_completion": completion - 0.1 * iteration,
+                            "mean_return": 5.0,
+                        },
+                        "per_level": {
+                            "level-01-basics": {
+                                "episodes": 2,
+                                "success_rate": 0.0,
+                                "mean_completion": completion - 0.1 * iteration,
+                                "mean_return": 5.0,
+                            }
+                        },
+                    },
+                },
+            )
+        return store
+
+    comparison = compare_runs(make("a-run", 0.5), make("b-run", 0.2))
+    # baseline = run A, candidate = run B, so the delta is negative.
+    assert comparison["overall"]["baseline_mean_completion"] == pytest.approx(0.5)
+    assert comparison["overall"]["candidate_mean_completion"] == pytest.approx(0.2)
+    assert comparison["overall"]["delta_mean_completion"] == pytest.approx(-0.3)
+    # Both runs' best evaluation is the first one (the higher completion of the pair).
+    assert comparison["run_a"]["iteration"] == 0
+    assert comparison["run_b"]["iteration"] == 0
+
+
 def test_provenance_captures_versions() -> None:
     provenance = environment_provenance()
     assert "python" in provenance or "packages" in provenance

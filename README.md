@@ -8,7 +8,7 @@ watching replays.
 **Status 2026-10-24.** The platform is implemented and tested end to end: 22 validated levels, a
 25-DoF humanoid, a working PPO trainer with checkpoints and resume, deterministic evaluation,
 replay export, a research dashboard, a bounded CEM tuner and a restricted research assistant.
-144 automated tests pass and `ruff check src tests` is clean. The *learning* result is partial
+145 automated tests pass and `ruff check src tests` is clean. The *learning* result is partial
 and reported honestly in [Learning status](#learning-status): PPO learns to stand and to make
 partial progress on the first course, but it does **not** yet complete parkour levels. Details in
 [docs/STATUS.md](docs/STATUS.md).
@@ -42,7 +42,7 @@ command reference, reward table and evaluation protocol.
 | Persistence | `runs/<id>/` with config, provenance (git commit, versions, CPU/GPU), CSV/JSONL metrics, checkpoints, evaluations, replays |
 | Dashboard | FastAPI + vendored Three.js: run browser, learning curves, per-level success, replay playback in 3D, run comparison, benchmark, start/stop one training process |
 | Secondary optimisers | Bounded CEM over 8 reward/PPO knobs; restricted Harness²-style assistant (11 bounded knobs, proposals only, never applied automatically) |
-| Tests | 144 tests: model/geometry, levels, environment mechanics, PPO math, training pipeline, CLI, dashboard endpoints, research tools |
+| Tests | 145 tests: model/geometry, levels, environment mechanics, PPO math, training pipeline, CLI, dashboard endpoints, research tools |
 
 ## Learning status
 
@@ -104,7 +104,7 @@ tools/generate_levels.py  deterministic level authoring (byte-identical regenera
 ## Tests
 
 ```bash
-pytest                 # 144 tests, ~42 s (includes two short real training runs)
+pytest                 # 145 tests, ~42 s (includes two short real training runs)
 ruff check src tests
 ```
 

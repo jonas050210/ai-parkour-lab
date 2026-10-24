@@ -450,7 +450,7 @@ def effective_status(
     return status
 
 
-def _evaluation_overall(record: dict[str, Any] | None) -> dict[str, Any]:
+def evaluation_overall(record: dict[str, Any] | None) -> dict[str, Any]:
     """Overall aggregate of an evaluation record, tolerating the legacy top-level layout."""
 
     if not isinstance(record, dict):
@@ -460,8 +460,8 @@ def _evaluation_overall(record: dict[str, Any] | None) -> dict[str, Any]:
     return record.get("overall", {}) or {}
 
 
-def _evaluation_score(record: dict[str, Any]) -> tuple[float, float]:
-    overall = _evaluation_overall(record)
+def evaluation_score(record: dict[str, Any]) -> tuple[float, float]:
+    overall = evaluation_overall(record)
     return (
         float(overall.get("success_rate") or 0.0),
         float(overall.get("mean_completion") or 0.0),
@@ -508,8 +508,8 @@ def list_runs(runs_dir: Path | str = DEFAULT_RUNS_DIR) -> list[dict[str, Any]]:
         if evaluations:
             # Rank by success first, then by completion.  Without the tie-break, a run that has
             # never succeeded anywhere reports whichever evaluation happens to be first.
-            best_eval = max(evaluations, key=_evaluation_score)
-        best_overall = _evaluation_overall(best_eval)
+            best_eval = max(evaluations, key=evaluation_score)
+        best_overall = evaluation_overall(best_eval)
         # ``summary.total_steps`` is the *budget* recorded at startup, so a live run would
         # otherwise look finished.  The append-only training CSV holds the real progress.
         last_row = _last_csv_row(child / "metrics" / "training.csv")
@@ -624,6 +624,8 @@ __all__ = [
     "atomic_write_text",
     "delete_run",
     "environment_provenance",
+    "evaluation_overall",
+    "evaluation_score",
     "git_revision",
     "effective_status",
     "last_activity",

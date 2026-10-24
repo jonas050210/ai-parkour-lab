@@ -30,7 +30,7 @@ from ..evaluation import (
 from ..levels import LevelCatalog
 from ..policies import ActorCritic
 from ..ppo import PPOConfig, Rollout, compute_gae, linear_schedule, ppo_update
-from ..storage import DEFAULT_RUNS_DIR, RunStore, _jsonable
+from ..storage import DEFAULT_RUNS_DIR, RunStore, _jsonable, evaluation_score
 from .curriculum import CurriculumConfig, LevelSampler, make_sampler
 from .vector import make_vec_env
 
@@ -835,10 +835,9 @@ def compare_runs(
         evaluations = store.evaluations()
         if not evaluations:
             return None
-        return max(
-            evaluations,
-            key=lambda record: float(record.get("aggregate", {}).get("overall", {}).get("success_rate", 0.0)),
-        )
+        # Same rule as the dashboard: success first, then completion.  Without the tie-break a
+        # run that has not solved anything yet compared its very first evaluation.
+        return max(evaluations, key=evaluation_score)
 
     eval_a = best(store_a)
     eval_b = best(store_b)
