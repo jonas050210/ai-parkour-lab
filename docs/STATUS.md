@@ -20,7 +20,7 @@ and how to reproduce every claim. It is the document to read before trusting any
 | Bounded CEM over reward/PPO knobs | `parkour evolve` | `tests/test_research_tools.py`, `tests/test_cli.py` |
 | Restricted research assistant | `parkour harness status/plan/probe` | `tests/test_research_tools.py` |
 
-Test suite: **143 tests** (`pytest`, ~42 s) and `ruff check src tests` clean.
+Test suite: **144 tests** (`pytest`, ~42 s) and `ruff check src tests` clean.
 
 ## 2. The model and the task
 
@@ -122,6 +122,7 @@ levels 3–22. The two held-out levels have never been used for tuning.
 | Killed trainers kept `status: running` | stale runs looked live in the CLI and dashboard | `test_stale_running_run_is_reported_as_interrupted` |
 | `evolution.default_vector` iterated dict keys | `NameError` on the first CEM search | `test_default_vector_reproduces_the_defaults` |
 | Run list showed `summary.total_steps`, i.e. the *budget* recorded at startup | a live 2.5 M-step run displayed as "5,000,000 steps" and a finished-looking card; killed runs without a pid also showed "running" forever | `test_run_list_separates_progress_from_the_step_budget`, `test_running_run_without_pid_goes_stale` |
+| "Best evaluation" ranked on success only | every run with 0 % success reported its *first* evaluation as best (13 % instead of 59 % for `walk-e`) | `test_best_evaluation_breaks_success_ties_on_completion` |
 | `rollout_episode` never wrote `result.observation` back into the loop variable | every `parkour evaluate` episode, replay and Harness²/CEM score ran the policy open-loop on the reset frame — 10.3 % instead of 45.5 % completion for the same checkpoint | `test_rollout_episode_is_closed_loop`, `test_rollout_episode_matches_a_manual_loop` |
 
 ## 6. How to reproduce

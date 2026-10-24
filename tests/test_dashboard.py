@@ -493,3 +493,32 @@ def test_running_run_without_pid_goes_stale(tmp_path: Path) -> None:
     listed = {run["run_id"]: run for run in list_runs(runs_dir)}
     assert listed["old-01"]["status"] == "interrupted"
     assert listed["old-01"]["recorded_status"] == "running"
+
+
+def test_best_evaluation_breaks_success_ties_on_completion(tmp_path: Path) -> None:
+    """With success still at zero, "best" must mean furthest progress, not the first record."""
+
+    from parkour_lab.storage import list_runs
+
+    runs_dir = tmp_path / "runs"
+    store = _make_run(runs_dir, run_id="ties-01")
+    for path in store.paths.evaluation_dir.glob("*.json"):
+        path.unlink()
+    for iteration, (success, completion) in enumerate([(0.0, 0.10), (0.0, 0.42), (0.0, 0.25)]):
+        store.write_json(
+            f"evaluation/{iteration:05d}.json",
+            {
+                "iteration": iteration,
+                "total_steps": 1024 * (iteration + 1),
+                "aggregate": {
+                    "overall": {
+                        "episodes": 2,
+                        "success_rate": success,
+                        "mean_completion": completion,
+                    }
+                },
+            },
+        )
+    run = [entry for entry in list_runs(runs_dir) if entry["run_id"] == "ties-01"][0]
+    assert run["best_eval_success"] == pytest.approx(0.0)
+    assert run["best_eval_completion"] == pytest.approx(0.42)

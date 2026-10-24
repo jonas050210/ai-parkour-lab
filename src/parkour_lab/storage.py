@@ -450,6 +450,24 @@ def effective_status(
     return status
 
 
+def _evaluation_overall(record: dict[str, Any] | None) -> dict[str, Any]:
+    """Overall aggregate of an evaluation record, tolerating the legacy top-level layout."""
+
+    if not isinstance(record, dict):
+        return {}
+    if "aggregate" in record:
+        return (record.get("aggregate") or {}).get("overall", {}) or {}
+    return record.get("overall", {}) or {}
+
+
+def _evaluation_score(record: dict[str, Any]) -> tuple[float, float]:
+    overall = _evaluation_overall(record)
+    return (
+        float(overall.get("success_rate") or 0.0),
+        float(overall.get("mean_completion") or 0.0),
+    )
+
+
 def last_activity(path: Path) -> float | None:
     """Newest mtime among the artefacts a running trainer keeps rewriting."""
 
@@ -488,17 +506,10 @@ def list_runs(runs_dir: Path | str = DEFAULT_RUNS_DIR) -> list[dict[str, Any]]:
                 evaluations.append(data)
         best_eval = None
         if evaluations:
-            best_eval = max(
-                evaluations,
-                key=lambda record: float(
-                    (record.get("aggregate") or record.get("overall") or {}).get(
-                        "success_rate", 0.0
-                    )
-                    if "aggregate" not in record
-                    else record["aggregate"].get("overall", {}).get("success_rate", 0.0)
-                ),
-            )
-        best_overall = (best_eval or {}).get("aggregate", {}).get("overall", {})
+            # Rank by success first, then by completion.  Without the tie-break, a run that has
+            # never succeeded anywhere reports whichever evaluation happens to be first.
+            best_eval = max(evaluations, key=_evaluation_score)
+        best_overall = _evaluation_overall(best_eval)
         # ``summary.total_steps`` is the *budget* recorded at startup, so a live run would
         # otherwise look finished.  The append-only training CSV holds the real progress.
         last_row = _last_csv_row(child / "metrics" / "training.csv")
