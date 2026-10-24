@@ -74,6 +74,10 @@ class TrainConfig:
     reward_ramp_fraction: float = 0.0
     curriculum_config: CurriculumConfig = field(default_factory=CurriculumConfig)
     action_scale: float = 0.25
+    #: ``centered`` maps [-1, 1] to ``default +/- scale * half_range``; ``range`` maps it onto
+    #: the full joint limits.  See ``ParkourEnv.action_bounds()`` - at scale 0.25 the knee only
+    #: travels 17 deg of its 138 deg range, so ``range`` is the only way to reach a crouch.
+    action_mode: str = "centered"
     action_smoothing: float = 0.6
     actuation: str = "position"
     physics_timestep: float = 0.002
@@ -104,6 +108,10 @@ class TrainConfig:
     name: str = ""
 
     def __post_init__(self) -> None:
+        if self.action_mode not in ("centered", "range"):
+            raise ValueError(
+                f"action_mode must be 'centered' or 'range', got {self.action_mode!r}"
+            )
         if self.target_success is not None and self.target_success <= 0.0:
             raise ValueError(
                 "target_success must be > 0; use stop_on_success=True to stop at the "
@@ -117,6 +125,7 @@ class TrainConfig:
             control_decimation=self.control_decimation,
             physics_timestep=self.physics_timestep,
             action_scale=self.action_scale,
+            action_mode=self.action_mode,  # type: ignore[arg-type]
             action_smoothing=self.action_smoothing,
             actuation=self.actuation,  # type: ignore[arg-type]
             reward=self.reward,
@@ -140,6 +149,7 @@ class TrainConfig:
             "reward": self.reward.to_dict(),
             "curriculum_config": self.curriculum_config.to_dict(),
             "action_scale": self.action_scale,
+            "action_mode": self.action_mode,
             "action_smoothing": self.action_smoothing,
             "actuation": self.actuation,
             "physics_timestep": self.physics_timestep,
@@ -184,6 +194,7 @@ class TrainConfig:
             reward=RewardConfig.from_dict(data.get("reward", {})),
             curriculum_config=CurriculumConfig.from_dict(data.get("curriculum_config", {})),
             action_scale=float(data.get("action_scale", 0.25)),
+            action_mode=str(data.get("action_mode", "centered")),
             action_smoothing=float(data.get("action_smoothing", 0.6)),
             actuation=str(data.get("actuation", "position")),
             physics_timestep=float(data.get("physics_timestep", 0.002)),

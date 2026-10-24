@@ -195,7 +195,14 @@ def command_inspect(args: argparse.Namespace) -> int:
             f"    {obstacle.id:<20} {obstacle.kind:<16} pos={obstacle.position.as_tuple()} "
             f"size={obstacle.size.as_tuple()} top={obstacle.top_z:.2f}{extra}"
         )
-    env = ParkourEnv(level, EnvConfig(level_id=level.id, action_scale=args.action_scale))
+    env = ParkourEnv(
+        level,
+        EnvConfig(
+            level_id=level.id,
+            action_scale=args.action_scale,
+            action_mode=args.action_mode,
+        ),
+    )
     try:
         print("\nhumanoid inventory")
         print(f"  total mass {spec.total_mass:.2f} kg over {len(spec.bodies)} bodies")
@@ -212,18 +219,24 @@ def command_inspect(args: argparse.Namespace) -> int:
                 )
         print(f"\nobservation: {len(OBSERVATION_NAMES)} task values + 3x{ACTION_DIM} proprio")
         print("  " + ", ".join(OBSERVATION_NAMES[:12]) + ", ...")
-        print(
-            f"action: {env.action_dim} clamped joint targets in [-1, 1] around the default pose, "
-            f"action_scale={args.action_scale:.2f}"
-        )
+        if args.action_mode == "range":
+            print(
+                f"action: {env.action_dim} clamped joint targets in [-1, 1] mapped onto the full "
+                "joint range (action_mode='range'; action_scale is unused)"
+            )
+        else:
+            print(
+                f"action: {env.action_dim} clamped joint targets in [-1, 1] around the default "
+                f"pose, action_scale={args.action_scale:.2f}"
+            )
         travel = np.diff(bounds, axis=1).ravel()
         knee = env.humanoid.joint_names.index("knee_l")
         print(
             f"  reachable travel per joint: {travel.min():.1f}-{travel.max():.1f} deg "
             f"(knee_l {travel[knee]:.1f} deg of its "
             f"{spec.joints[knee].upper - spec.joints[knee].lower:.0f} deg range). "
-            "The box is default +/- scale * half_range; raise --action-scale (or use "
-            "action_mode='range') for more authority."
+            "The box is default +/- scale * half_range; raise --action-scale (or pass "
+            "--action-mode range for the full joint limits) for more authority."
         )
         print(f"model: nq={env.model.nq} nv={env.model.nv} nu={env.model.nu} "
               f"timestep={env.model.opt.timestep}")
@@ -343,6 +356,7 @@ def _build_train_config(args: argparse.Namespace, catalog: LevelCatalog) -> Trai
         workers=workers,
         ppo=ppo,
         action_scale=args.action_scale,
+        action_mode=args.action_mode,
         action_smoothing=args.action_smoothing,
         initial_log_std=args.init_log_std,
         actuation=args.actuation,
@@ -877,6 +891,12 @@ def build_parser() -> argparse.ArgumentParser:
         default=0.25,
         help="action box scale used for the reachable-range column (default 0.25)",
     )
+    inspect.add_argument(
+        "--action-mode",
+        choices=("centered", "range"),
+        default="centered",
+        help="centered = default +/- scale*half_range, range = full joint limits",
+    )
     inspect.set_defaults(func=command_inspect)
 
     export = subparsers.add_parser("export-mjcf", help="export the MJCF scene for a level")
@@ -917,6 +937,15 @@ def build_parser() -> argparse.ArgumentParser:
     train_cmd.add_argument("--gamma", type=float, default=None)
     train_cmd.add_argument("--hidden-dim", type=int, default=128)
     train_cmd.add_argument("--action-scale", type=float, default=0.25)
+    train_cmd.add_argument(
+        "--action-mode",
+        choices=("centered", "range"),
+        default="centered",
+        help=(
+            "centered: [-1,1] around the standing pose (scale * half_range); "
+            "range: [-1,1] over the full joint limits, action_scale unused"
+        ),
+    )
     train_cmd.add_argument(
         "--init-log-std", type=float, default=-1.0, help="initial Gaussian action noise (log std)"
     )

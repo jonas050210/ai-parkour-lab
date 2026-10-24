@@ -332,3 +332,45 @@ def test_subprocess_vector_env_autoresets_the_same_way(catalog: LevelCatalog) ->
     finally:
         serial.close()
         parallel.close()
+
+
+def test_action_mode_reaches_the_environment_and_the_checkpoint(catalog: LevelCatalog) -> None:
+    """``action_mode="range"`` was implemented in the env but unreachable from training.
+
+    A policy trained on the full joint range must also be *evaluated* on it - otherwise every
+    rollout replay silently switches the robot's reachable box.
+    """
+
+    from parkour_lab.evaluation import env_config_from_checkpoint
+
+    parser = build_parser()
+    args = parser.parse_args(
+        ["train", "--level", "level-01-basics", "--steps", "5000", "--action-mode", "range"]
+    )
+    config = _build_train_config(args, catalog)
+    assert config.action_mode == "range"
+    env_config = config.env_config("level-01-basics")
+    assert env_config.action_mode == "range"
+
+    # The full box really is the full box: the knee gets its whole 138 deg.
+    env = ParkourEnv(catalog["level-01-basics"], env_config)
+    try:
+        knee = env.humanoid.joint_names.index("knee_l")
+        travel = np.degrees(np.diff(env.action_bounds(), axis=1).ravel())
+        limits = np.degrees(env.joint_limits_rad)
+        assert travel[knee] == pytest.approx(limits[knee, 1] - limits[knee, 0], abs=0.5)
+    finally:
+        env.close()
+
+    # Round trip through the serialised config (this is what a checkpoint stores).
+    restored = TrainConfig.from_dict(config.to_dict())
+    assert restored.action_mode == "range"
+    recorded = {"config": config.to_dict()}
+    assert env_config_from_checkpoint(recorded, "level-01-basics").action_mode == "range"
+
+    # Old checkpoints (no action_mode key) keep the historical centred behaviour.
+    legacy = {"config": {"action_scale": 0.3}}
+    assert env_config_from_checkpoint(legacy, "level-01-basics").action_mode == "centered"
+
+    with pytest.raises(ValueError, match="action_mode"):
+        TrainConfig(action_mode="sideways")

@@ -357,6 +357,7 @@ def env_config_from_checkpoint(extra: dict[str, Any], level_id: str) -> EnvConfi
         control_decimation=int(config.get("control_decimation", 5)),
         physics_timestep=float(config.get("physics_timestep", 0.002)),
         action_scale=float(config.get("action_scale", 0.25)),
+        action_mode=config.get("action_mode", "centered"),
         action_smoothing=float(config.get("action_smoothing", 0.6)),
         actuation=config.get("actuation", "position"),
         max_episode_seconds=config.get("max_episode_seconds"),
