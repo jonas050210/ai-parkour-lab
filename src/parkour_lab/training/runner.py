@@ -556,6 +556,22 @@ class TrainingRunner:
                 episode["iteration"] = self.iteration + 1
                 episode["total_steps"] = self.total_steps
                 self.store.append_episode(episode)
+                self.episode_stats.append(
+                    {
+                        key: episode[key]
+                        for key in (
+                            "level_id",
+                            "success",
+                            "termination_reason",
+                            "completion_fraction",
+                            "episode_return",
+                            "sim_steps",
+                        )
+                        if key in episode
+                    }
+                )
+                if len(self.episode_stats) > 50:
+                    del self.episode_stats[0]
                 episode_returns.append(float(episode.get("episode_return", 0.0)))
                 episode_lengths.append(float(episode.get("sim_steps", 0)))
                 successes += int(bool(episode.get("success", False)))
@@ -751,7 +767,9 @@ class TrainingRunner:
             "assigned_levels": getattr(self, "assigned_levels", []),
             "rng_state": _jsonable(self.rng.bit_generator.state),
             "created_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-            "episode_stats": [float(value) for value in self.episode_stats[-50:]],
+            # Recent episode outcomes (dicts).  This used to be ``float(value)`` over a list
+            # that was never populated, so it either crashed or wrote nothing.
+            "episode_stats": _jsonable(self.episode_stats[-50:]),
         }
         path = self.store.paths.checkpoint_dir / f"{name}.npz"
         self.model.save(path, extra=extra)

@@ -21,7 +21,7 @@ and how to reproduce every claim. It is the document to read before trusting any
 | Bounded CEM over reward/PPO knobs | `parkour evolve` | `tests/test_research_tools.py`, `tests/test_cli.py` |
 | Restricted research assistant | `parkour harness status/plan/probe` | `tests/test_research_tools.py` |
 
-Test suite: **171 tests** (`pytest`, ~36 s) and `ruff check src tests` clean.
+Test suite: **172 tests** (`pytest`, ~36 s) and `ruff check src tests` clean.
 
 ## 2. The model and the task
 
@@ -177,6 +177,7 @@ beyond "the level-01 policy transfers weakly and falls over": the 20-level sweep
 | Finished episodes were labelled with the level assigned for the *next* reset | per-level statistics (and therefore the adaptive curriculum) could be attributed to the wrong level | `test_finished_episode_is_labelled_with_the_level_it_ran` |
 | A successful episode reported ~85 % completion | `completion` is a raw distance ratio while success only needs the finish disc | `test_successful_episode_reports_full_completion` |
 | `env_config_from_checkpoint` hard-coded `randomize_reset=False` | any tool that did not override it replayed three identical "seeds" | `test_diagnose_uses_every_seed` |
+| Checkpoint `episode_stats` was declared, never written, and serialised with `float(value)` | the key either held an empty list or would have raised `TypeError`; a checkpoint could not describe the episodes around it | `test_checkpoint_carries_recent_episode_outcomes` |
 | `parkour watch --checkpoint` rebuilt the default `EnvConfig` | the GUI played a checkpoint with the wrong action scale, smoothing, timestep or actuation while `evaluate`/`replay` used the recorded ones | `test_watch_uses_the_checkpoint_dynamics` |
 | `parkour watch` on a headless machine called `exit(1)` inside MuJoCo | importing `mujoco.viewer` initialises GLFW, which terminates the process from C — the friendly error message was unreachable | `test_watch_refuses_a_headless_machine_without_killing_the_process` |
 | The trainer acted once per episode on the *previous* episode's final observation | `step()` returns the state that ended the episode and the reset happens afterwards, so the first action of every episode was paired with the wrong state (one corrupted transition per episode, and a policy decision made on a finished episode) | `test_vector_autoreset_returns_the_post_reset_observation`, `test_rollout_acts_on_the_reset_observation_after_an_episode_ends` |

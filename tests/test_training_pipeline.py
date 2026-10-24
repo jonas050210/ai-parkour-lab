@@ -616,3 +616,17 @@ def test_rollout_acts_on_the_reset_observation_after_an_episode_ends(
     # Every control step completes the course, so every row starts a fresh episode.
     assert metrics["episodes"] == config.rollout_steps * config.num_envs
     np.testing.assert_allclose(batch.observations[0], batch.observations[-1], atol=1e-6)
+
+
+def test_checkpoint_carries_recent_episode_outcomes(run_dir: Path) -> None:
+    """``extra["episode_stats"]`` must be real data, not an empty list next to a float() call."""
+
+    from parkour_lab.policies import ActorCritic
+
+    checkpoint = run_dir / "checkpoints" / "latest.npz"
+    _policy, extra = ActorCritic.load(checkpoint)
+    stats = extra.get("episode_stats")
+    assert isinstance(stats, list) and stats
+    assert isinstance(stats[0], dict)
+    assert {"level_id", "success", "completion_fraction"} <= set(stats[0])
+    assert len(stats) <= 50
