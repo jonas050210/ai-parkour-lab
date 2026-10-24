@@ -65,28 +65,36 @@ Configuration: `level-01-basics` (6 m runway, one 10 cm step), 4 envs, 50 Hz con
 posture-only shaping (`posture_stage()`) to progress 6/m + forward velocity 4/s (target 1 m/s) +
 gait 6/s + upright/height/alive shaping, `no_progress` termination after 2 s, episode cap 10 s.
 
-Results at 1.7 M steps (evaluation is now closed-loop — see the bug table in §5):
+Results for the completed 5 M-step run (`walk-e`: 2 442 iterations, 27 328 episodes; 3.56 M of
+those steps took 33 min after resuming at 1.44 M, i.e. ~1 780 steps/s on 2 vCPU):
 
 | Metric | Value |
 |---|---|
-| Success rate | **0 %** |
-| Deterministic evaluation, 5 seeds (11/23/37/41/53) | **45.5 %** mean completion ≈ 2.7 m |
-| Stochastic evaluation, same 5 seeds | 45.6 % — the mean action is not "more conservative" |
-| Run's own 2-seed rolling eval at 1.72 M steps | 58 % completion, mean return 54 |
-| Training episodes, last 300 | 49 % mean completion ≈ 2.9 m in 3.8 s |
-| Termination mix (last 300) | 95 % `collapsed`, 5 % `fell_over` |
-| Transfer to the next level (`level-02-step-up`, 3 seeds) | 12 % completion — no completed level |
-| Explained variance / approx. KL | ~0.95 / ~0.02 (the learner is healthy; the task is not solved) |
+| Success rate | **0 %** (0 of 27 328 training episodes, 0 of every evaluation) |
+| Deterministic evaluation, 5 seeds (11/23/37/41/53) | **47.7 %** mean completion ≈ 2.9 m |
+| Stochastic evaluation, same 5 seeds | 46.9 % — sampling noise is not the limiting factor |
+| Run's own 2-seed rolling evaluation, final | 58.4 % completion, mean return 51.3 |
+| Training episodes, last 300 | 51 % mean completion ≈ 3.1 m in 3.55 s |
+| Termination mix (last 300) | 92 % `collapsed`, 8 % `fell_over` |
+| All 20 training levels, 2 seeds each | 13.8 % mean completion, 0 % success; per level 6.3–14.8 % |
+| Explained variance / approx. KL | 0.98 / 0.016 (the learner is healthy; the task is not solved) |
 
-Interpretation: PPO reliably learns to stand, to survive longer, and to convert that into forward
-motion — 0 → 2.7 m over ~1.7 M steps — but every episode still ends in `collapsed` before the 6 m
-finish. There is **no** walking gait and **no** completed level, so there is nothing to report on
-levels 3–22. The two held-out levels have never been used for tuning.
+**The policy plateaued, so this is not a sample-budget story alone.** Completion sat at 58.8 %
+at 1.68 M steps, 59.4 % at 3.40 M and 58.4 % at 5.0 M: 3.3 M further steps (~30 min of CPU) bought
+nothing. The learned behaviour is a fast, symmetric hop that covers ~3 m in 4.5 s at ~0.8 m/s
+(21 % of control steps have both feet off the ground) and then collapses. The policy is healthy
+(value loss falls, explained variance 0.98, KL 0.016) and the *task* reward is what saturates: with
+`progress 6/m` and `fall_penalty 2`, falling forward after 3 m already pays better than walking
+slowly, and the reward never distinguishes a hopping controller from a walking one.
 
-> **Numbers from earlier runs are not comparable.** Until the evaluation loop was fixed (§5, last
-> row), `parkour evaluate` reported an open-loop controller and understated every score by roughly
-> 4×: the same `walk-e` checkpoint scored 10.3 % before the fix and 45.5 % after it. Evaluation rows
-> in `runs/walk-e/metrics/evaluation.csv` below ~1.44 M steps, the CEM fitness values recorded in
+There is **no** walking gait and **no** completed level, so there is nothing to report on levels 3–22
+beyond "the level-01 policy transfers weakly and falls over": the 20-level sweep ends in `fell_over`
+26/40 and `collapsed` 14/40. The two held-out levels have never been used for tuning.
+
+> **Numbers from earlier runs are not comparable.** Until the evaluation loop was fixed (§5),
+> `parkour evaluate` reported an open-loop controller and understated every score by roughly 4×:
+> the same `walk-e` checkpoint scored 10.3 % before the fix and 45.5 % after it. Evaluation rows in
+> `runs/walk-e/metrics/evaluation.csv` below ~1.44 M steps, the CEM fitness values recorded in
 > `runs/*/harness2/`, and the "13–21 % completion" figures quoted in the earlier revision of this
 > document were all measured with the broken loop and should be ignored. Training metrics
 > (`metrics/training.csv`, `episodes.jsonl`) were never affected — the trainer always acted on fresh
@@ -151,19 +159,24 @@ parkour dashboard --port 8000     # http://localhost:8000 → Replay tab
 
 ## 7. What remains unfinished
 
-1. **Learning to walk / complete levels.** Highest priority, and the first job now that evaluation
-   is trustworthy is to re-baseline: the same `walk-e` checkpoint was reported at 10.3 % throughout this
-   build and is really 45.5 %, so morphology/actuation conclusions drawn from the old
-   numbers are unproven. Concrete next experiments, in the order I would run them:
-   * Re-run the morphology/actuation sweep now that the action-span and timestep bugs are fixed:
-     larger feet, bent-knee default stance, stronger ankle torque, 50 Hz vs 100 Hz control.
-   * Train from a **reference gait** (a scripted gait retargeted as a tracking objective) instead of
-     pure exploration — the CPG experiments suggest exploration alone is not finding a stable
-     contact cycle.
-   * Add **mirror symmetry** to the observation/action space and symmetric data augmentation, which
-     typically halves the effective sample requirement for locomotion.
-   * Increase the sample budget by an order of magnitude (10–50 M steps) on better hardware, or port
-     the same MJCF to a batched GPU backend and benchmark it (MJWarp/mjlab remain unverified here).
+1. **Learning to walk / complete levels.** Highest priority. The 5 M-step run rules out two easy
+   explanations: it is not evaluation noise (deterministic ≈ stochastic) and it is not sample
+   budget alone (3.3 M extra steps changed nothing). The remaining suspects are reward geometry and
+   exploration structure. Concrete next experiments, in the order I would run them:
+   * **Reward geometry for survival.** `walk-e` pays 6/m of progress and only −2 for falling, so
+     "hop 3 m and collapse" is a local optimum. The first follow-up (`walk-f`, 1.5 M steps) raises
+     the fall penalty to 20 and doubles the alive/upright/height weights to test whether the
+     collapse is a reward-basin artifact or a control limitation.
+   * **Reference gait tracking** instead of pure exploration: the CPG search over ~2 000 open-loop
+     parameter sets peaked at 0.36 m, so the reference should come from a scripted quasi-static
+     walk validated in the *enclosed* loop, or from a public retargeted mocap clip.
+   * **Mirror symmetry** in the observation/action space plus symmetric augmentation, which
+     typically halves the samples needed for locomotion.
+   * **Re-run the morphology/actuation sweep** (larger feet, bent-knee stance, ankle authority,
+     50 Hz vs 100 Hz) now that the action-span, timestep and evaluation bugs are all fixed — the
+     earlier sweeps were taken under at least one of those bugs.
+   * **Bigger budgets on better hardware** (10–50 M steps, or a batched GPU backend benchmarked
+     against this one; MJWarp/mjlab remain unverified here).
 2. **Multi-seed baselines.** Only one long training seed has been run end-to-end; `evaluate`,
    `compare` and the evolve tool exist and are tested, but the science needs 3+ seeds.
 3. **Per-level training evidence.** The adaptive curriculum is implemented and exercised on a 3-level

@@ -52,11 +52,13 @@ step), from a randomly initialised policy:
 * **Works:** standing and recovering. A posture-only reward learns to stay upright for the whole
   episode (zero action stays up for 2 000+ control steps; a 250 k-step run reaches the episode cap
   in ~56 % of episodes).
-* **Partially works:** progress. With an annealed reward (posture → forward), the policy learns to
-  move ~2.7 m toward the finish before collapsing, which is 45 % of the first course after 1.7 M
-  steps, and it is still improving. Deterministic and stochastic evaluation agree within 0.1 pt.
-* **Does not work yet:** completing a course (0 % success, every episode ends in `collapsed`), a
-  stable walking gait, and therefore all the harder levels (`level-02-step-up`: 12 % completion).
+* **Partially works:** progress. With an annealed reward (posture → forward), the policy learns a
+  fast symmetric hop that covers ~3 m of the 6 m course (47.7 % completion over 5 seeds, 58.4 % in
+  the run's own rolling evaluation) and then collapses. It is deterministic-noise-insensitive
+  (stochastic evaluation: 46.9 %) and it **plateaued**: 3.3 M extra steps after 1.7 M changed
+  completion by less than 1 point.
+* **Does not work yet:** completing a course (0 % success in 27 328 training episodes), a walking
+  gait, and therefore all the harder levels (all 20 training levels together: 13.8 % completion).
 
 A one-line bug in the evaluation loop used to report an open-loop controller, which is why older
 numbers in this repo looked ~4× worse than the policy actually is. It is fixed, and two tests now
