@@ -299,10 +299,13 @@ class AdaptiveLevelSampler(LevelSampler):
         probabilities /= probabilities.sum()
         samples = self.rng.choice(ids, size=count, p=probabilities).tolist()
         if self.config.exploration_fraction > 0:
+            # Explore *inside* the allowed set.  Drawing uniformly from all levels would
+            # bypass the frontier and send a beginner policy to the hardest course.
+            allowed = [key for key in ids if weights[key] > 0.0]
             uniforms = self.rng.random(count) < self.config.exploration_fraction
             for index, explore in enumerate(uniforms):
-                if explore:
-                    samples[index] = str(self.rng.choice(ids))
+                if explore and allowed:
+                    samples[index] = str(self.rng.choice(allowed))
         return [str(sample) for sample in samples]
 
     def update(

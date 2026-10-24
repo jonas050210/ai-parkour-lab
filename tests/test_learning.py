@@ -488,3 +488,17 @@ def test_gae_bootstraps_a_truncated_episode() -> None:
     plain, _ = compute_gae(rewards, values, dones, gamma=0.5, gae_lambda=0.5, last_value=0.0)
     assert plain[1] < advantages[1]
     assert plain[1] == pytest.approx(0.5)
+
+
+def test_adaptive_exploration_stays_inside_the_frontier(catalog: LevelCatalog) -> None:
+    """Exploration must not jump past the frontier: that is the course order."""
+
+    levels = list(catalog)[:8]
+    config = CurriculumConfig(exploration_fraction=1.0, frontier_window=1, novelty_bonus=0.0)
+    sampler = AdaptiveLevelSampler(levels, seed=1, config=config)
+    frontier = sampler._frontier_order()
+    orders = {sampler._order[level_id] for level_id in sampler.sample(300)}
+    assert max(orders) <= frontier
+    assert min(orders) >= 1
+    # Exploration still explores: more than one level is attempted.
+    assert len(orders) > 1

@@ -449,6 +449,17 @@ def test_evaluation_runs_the_requested_number_of_episodes(catalog: LevelCatalog)
     assert evaluation["aggregate"]["overall"]["episodes"] == 4
     assert len({record["seed"] for record in evaluation["records"]}) == 4
 
+    # The progress total must be the number of episodes that will actually run.
+    progress: list[tuple[int, int]] = []
+    evaluate_policy(
+        model,
+        catalog,
+        ["level-01-basics"],
+        config=EvalConfig(seeds=(11, 23), deterministic=True, max_episodes_per_level=4),
+        progress_callback=lambda done, total, _record: progress.append((done, total)),
+    )
+    assert progress[-1] == (4, 4)
+
 
 def _finish_at_spawn(tmp_path: Path):
     """A schema-valid level whose finish disc already contains the spawn point."""

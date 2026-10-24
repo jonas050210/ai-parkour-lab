@@ -138,11 +138,12 @@ def evaluate_policy(
 
     cfg = config or EvalConfig()
     records: list[dict[str, Any]] = []
-    total_episodes = len(level_ids) * len(cfg.seeds)
+    seeds = expand_eval_seeds(cfg.seeds, cfg.max_episodes_per_level)
+    # ``max_episodes_per_level`` can add seeds, so the progress total is the expanded count.
+    total_episodes = len(level_ids) * len(seeds)
     completed = 0
     for level_id in level_ids:
         level = catalog[level_id]
-        seeds = expand_eval_seeds(cfg.seeds, cfg.max_episodes_per_level)
         for seed in seeds:
             record = rollout_episode(
                 policy,
