@@ -46,7 +46,7 @@ humanoid.HumanoidSpec (25 DoF) ─────┤
 | `env.py` | Reset/step contract, observation and action mapping, reward components, termination, contact diagnostics, replay frame capture | Optimiser, storage, HTTP |
 | `policies.py` | MLP actor/critic, observation normalisation, action distribution, checkpoint save/load | Environment dynamics, evaluation protocol |
 | `ppo.py` | GAE, clipped surrogate update, schedule | Data collection |
-| `training/vector.py` | Serial and subprocess vectorised envs, level switching, `benchmark_simulation` | Learning |
+| `training/vector.py` | Serial and subprocess vectorised envs, level switching, `autoreset()` (a finished episode's reset observation is delivered explicitly), `benchmark_simulation` | Learning |
 | `training/curriculum.py` | Level sampler (`single`, `uniform`, `adaptive`) and per-level performance summaries | Reward weights |
 | `training/runner.py` | Training loop, checkpointing, periodic evaluation, replays, CSV/JSONL metrics | Level authoring, UI |
 | `evaluation.py` | Deterministic/stochastic rollouts, aggregation, comparison, checkpoint-dynamics recovery | Training updates |

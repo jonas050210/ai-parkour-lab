@@ -463,3 +463,28 @@ def test_finished_episode_is_labelled_with_the_level_it_ran(catalog: LevelCatalo
         assert record["assigned_level"] == "level-03-small-hops"
     finally:
         vec.close()
+
+
+def test_gae_bootstraps_a_truncated_episode() -> None:
+    """A time limit is not a terminal state: V(s_final) still counts."""
+
+    rewards = np.array([1.0, 1.0])
+    values = np.array([0.5, 0.5])
+    dones = np.array([0.0, 1.0])
+    bootstrap = np.array([0.0, 2.0])
+    advantages, returns = compute_gae(
+        rewards,
+        values,
+        dones,
+        gamma=0.5,
+        gae_lambda=0.5,
+        last_value=0.0,
+        bootstrap=bootstrap,
+    )
+    # hand-computed: delta_1 = 1 + 0 + 2.0 - 0.5 = 2.5; delta_0 = 1 + 0.25 + 0 - 0.5 = 0.75
+    np.testing.assert_allclose(advantages, [0.75 + 0.25 * 2.5, 2.5], atol=1e-12)
+    np.testing.assert_allclose(returns, advantages + values, atol=1e-12)
+    # Without the bootstrap the truncated step would be worth exactly its reward.
+    plain, _ = compute_gae(rewards, values, dones, gamma=0.5, gae_lambda=0.5, last_value=0.0)
+    assert plain[1] < advantages[1]
+    assert plain[1] == pytest.approx(0.5)

@@ -518,6 +518,9 @@ class TrainingRunner:
         values = np.zeros((steps, num_envs), dtype=np.float64)
         rewards = np.zeros((steps, num_envs), dtype=np.float64)
         dones = np.zeros((steps, num_envs), dtype=np.float64)
+        truncated_mask = np.zeros((steps, num_envs), dtype=np.float64)
+        bootstrap = np.zeros((steps, num_envs), dtype=np.float64)
+        time_limited: list[tuple[int, int, np.ndarray]] = []
         episode_returns: list[float] = []
         episode_lengths: list[float] = []
         successes = 0
@@ -538,6 +541,11 @@ class TrainingRunner:
             values[step] = value_t
             rewards[step] = rewards_t * config.reward_scale
             dones[step] = np.logical_or(terminated, truncated)
+            truncated_mask[step] = truncated
+            for index in np.flatnonzero(truncated):
+                final = infos[index].get("final_observation")
+                if final is not None:
+                    time_limited.append((step, int(index), np.asarray(final, dtype=np.float64)))
             self.total_steps += num_envs
             levels_changed = False
             for index, info in enumerate(infos):
@@ -577,7 +585,17 @@ class TrainingRunner:
                         levels_changed = True
             if levels_changed:
                 self.vec.set_levels(self.assigned_levels)
+            next_observation = np.array(next_observation, dtype=np.float64, copy=True)
+            reset_slots, reset_observations = self.vec.autoreset()
+            if reset_slots.size:
+                next_observation[reset_slots] = reset_observations
             self.observation = next_observation
+
+        if time_limited:
+            finals = np.stack([row for _, _, row in time_limited])
+            final_values = self.model.value(finals)
+            for (step_index, env_index, _), value in zip(time_limited, final_values):
+                bootstrap[step_index, env_index] = float(value)
 
         last_values = self.model.value(self.observation)
         flat_observations = observations.reshape(steps * num_envs, observation_dim)
@@ -594,6 +612,7 @@ class TrainingRunner:
                 gamma=config.ppo.gamma,
                 gae_lambda=config.ppo.gae_lambda,
                 last_value=float(last_values[env_index]),
+                bootstrap=bootstrap[:, env_index],
             )
             advantages[:, env_index] = env_advantages
         returns = advantages + values

@@ -21,7 +21,7 @@ and how to reproduce every claim. It is the document to read before trusting any
 | Bounded CEM over reward/PPO knobs | `parkour evolve` | `tests/test_research_tools.py`, `tests/test_cli.py` |
 | Restricted research assistant | `parkour harness status/plan/probe` | `tests/test_research_tools.py` |
 
-Test suite: **159 tests** (`pytest`, ~36 s) and `ruff check src tests` clean.
+Test suite: **167 tests** (`pytest`, ~36 s) and `ruff check src tests` clean.
 
 ## 2. The model and the task
 
@@ -177,6 +177,8 @@ beyond "the level-01 policy transfers weakly and falls over": the 20-level sweep
 | Finished episodes were labelled with the level assigned for the *next* reset | per-level statistics (and therefore the adaptive curriculum) could be attributed to the wrong level | `test_finished_episode_is_labelled_with_the_level_it_ran` |
 | A successful episode reported ~85 % completion | `completion` is a raw distance ratio while success only needs the finish disc | `test_successful_episode_reports_full_completion` |
 | `env_config_from_checkpoint` hard-coded `randomize_reset=False` | any tool that did not override it replayed three identical "seeds" | `test_diagnose_uses_every_seed` |
+| The trainer acted once per episode on the *previous* episode's final observation | `step()` returns the state that ended the episode and the reset happens afterwards, so the first action of every episode was paired with the wrong state (one corrupted transition per episode, and a policy decision made on a finished episode) | `test_vector_autoreset_returns_the_post_reset_observation`, `test_rollout_acts_on_the_reset_observation_after_an_episode_ends` |
+| Truncated episodes were bootstrapped as if they were terminal | a time limit or stagnation stop cut the value target to `r`, teaching the critic that long episodes are worthless; `V(s_final)` is now used | `test_gae_bootstraps_a_truncated_episode` |
 | `--target-success 0` (and any target) stopped the run after the *first evaluation* | "stop at the first success" could not be expressed: the first evaluation sets `best_eval_success` to 0.0 even with zero successes, and `0.0 >= 0.0` ended the run | `test_stop_reason_needs_a_real_success`, `test_stop_on_success_ends_the_run_at_the_first_completed_course` |
 | A run's summary could not say why it ended, and `best_eval_success` was -1.0 before the first evaluation | a bounded or early-stopped run was indistinguishable from a crash in `summary.json` | `test_runs_without_stop_on_success_spend_their_budget` |
 

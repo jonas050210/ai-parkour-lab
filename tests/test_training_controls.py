@@ -258,3 +258,77 @@ def test_train_records_the_schedule_in_the_run_config(
     assert stored["reward_ramp_fraction"] == pytest.approx(0.5)
     assert stored["reward_start"]["progress_per_metre"] == 0.0
     assert stored["max_episode_seconds"] == pytest.approx(4.0)
+
+
+def test_vector_autoreset_returns_the_post_reset_observation(
+    catalog: LevelCatalog, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A trainer must never act on the previous episode's final state.
+
+    ``step`` can only return the state that ended the episode, so the reset observation is
+    delivered separately by ``autoreset``.  This test pins that contract down.
+    """
+
+    from parkour_lab.env import ParkourEnv
+    from parkour_lab.training.vector import SerialVecEnv
+
+    observed_resets: list[np.ndarray] = []
+    original_reset = ParkourEnv.reset
+
+    def spy(self, *args, **kwargs):
+        observation, info = original_reset(self, *args, **kwargs)
+        observed_resets.append(np.asarray(observation, dtype=np.float64).copy())
+        return observation, info
+
+    monkeypatch.setattr(ParkourEnv, "reset", spy)
+    env = SerialVecEnv(
+        catalog,
+        ["level-01-basics"],
+        env_config=EnvConfig(level_id="level-01-basics", max_episode_seconds=0.3),
+    )
+    try:
+        env.reset()
+        infos = None
+        for _ in range(200):
+            _, _, terminated, truncated, infos = env.step(np.zeros((1, env.action_dim)))
+            if terminated[0] or truncated[0]:
+                break
+        assert infos is not None and (terminated[0] or truncated[0])
+        final = np.asarray(infos[0]["final_observation"])
+        slots, observations = env.autoreset()
+        assert slots.tolist() == [0]
+        # autoreset reset the environment; its observation is the one reset returned
+        np.testing.assert_allclose(observations[0], observed_resets[-1], atol=1e-6)
+        # ... and it is a different state from the one that ended the episode
+        assert not np.allclose(observations[0], final, atol=1e-6)
+        # nothing left to reset
+        slots, observations = env.autoreset()
+        assert slots.size == 0 and observations.shape[0] == 0
+    finally:
+        env.close()
+
+
+def test_subprocess_vector_env_autoresets_the_same_way(catalog: LevelCatalog) -> None:
+    from parkour_lab.training.vector import SerialVecEnv, SubprocVecEnv
+
+    config = EnvConfig(level_id="level-01-basics", max_episode_seconds=0.3)
+    serial = SerialVecEnv(catalog, ["level-01-basics"], env_config=config, seeds=[4])
+    parallel = SubprocVecEnv(
+        catalog, ["level-01-basics"], env_config=config, seeds=[4], workers=1
+    )
+    try:
+        serial.reset()
+        parallel.reset()
+        for _ in range(200):
+            actions = np.zeros((1, serial.action_dim))
+            _, _, terminated, truncated, _ = serial.step(actions)
+            parallel.step(actions)
+            if terminated[0] or truncated[0]:
+                break
+        serial_slots, serial_obs = serial.autoreset()
+        parallel_slots, parallel_obs = parallel.autoreset()
+        assert serial_slots.tolist() == parallel_slots.tolist() == [0]
+        assert serial_obs.shape == parallel_obs.shape
+    finally:
+        serial.close()
+        parallel.close()

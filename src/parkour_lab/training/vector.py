@@ -47,6 +47,8 @@ class VectorEnv(Protocol):
 
     def set_levels(self, levels: Sequence[str]) -> None: ...
 
+    def autoreset(self) -> tuple[np.ndarray, np.ndarray]: ...
+
     def set_reward(self, reward: RewardConfig) -> None: ...
 
     def close(self) -> None: ...
@@ -109,6 +111,35 @@ class _EnvPool:
             observations.append(observation)
         return np.asarray(observations, dtype=np.float32)
 
+    def autoreset(self) -> tuple[np.ndarray, np.ndarray]:
+        """Reset every slot whose episode ended; return their indices and observations.
+
+        ``step`` cannot return the post-reset observation (it is the result of an action),
+        so a trainer that used the returned observations directly would act once per episode
+        on the *previous* episode's final state.  Callers must apply this before choosing the
+        next action.
+        """
+
+        slots: list[int] = []
+        observations = []
+        for slot in range(len(self._current)):
+            if not self._needs_reset[slot]:
+                continue
+            env = self._make_env(self.levels[slot], slot)
+            self._current[slot] = env
+            self._needs_reset[slot] = False
+            observation, _ = env.reset(seed=self._episode_seed(slot))
+            slots.append(slot)
+            observations.append(observation)
+        if not slots:
+            return np.zeros(0, dtype=np.int64), np.zeros(
+                (0, self.observation_dim), dtype=np.float32
+            )
+        return (
+            np.asarray(slots, dtype=np.int64),
+            np.asarray(observations, dtype=np.float32),
+        )
+
     def set_levels(self, levels: Sequence[str]) -> None:
         """Assign levels for each environment's *next* episode."""
 
@@ -152,9 +183,13 @@ class _EnvPool:
             info = dict(result.info)
             observations[slot] = result.observation
             if result.terminated or result.truncated:
+                # The observation of a finished episode is the state that ended it.  Keep it:
+                # bootstrapping a truncated episode needs V(s_final), and the reset observation
+                # below is a different state altogether.
+                info["final_observation"] = observations[slot].copy()
                 info["episode"] = self._episode_record(env, slot)
-                # The reset (and any new level assignment) is applied at the start of the
-                # next step call so that trainers can re-assign levels first.
+                # The reset (and any new level assignment) is applied by ``autoreset`` so that
+                # trainers can re-assign levels first.
                 self._needs_reset[slot] = True
             infos.append(info)
         return observations, rewards, terminated, truncated, infos
@@ -220,6 +255,9 @@ class SerialVecEnv:
     def set_levels(self, levels: Sequence[str]) -> None:
         self._pool.set_levels(levels)
 
+    def autoreset(self) -> tuple[np.ndarray, np.ndarray]:
+        return self._pool.autoreset()
+
     def set_reward(self, reward: RewardConfig) -> None:
         self._pool.set_reward(reward)
 
@@ -264,6 +302,9 @@ def _worker_main(
             elif command == "set_levels":
                 pool.set_levels(message["levels"])
                 connection.send({"ok": True, "levels": pool.levels})
+            elif command == "autoreset":
+                slots, observations = pool.autoreset()
+                connection.send({"slots": slots, "obs": observations})
             elif command == "set_reward":
                 pool.set_reward(RewardConfig.from_dict(message["reward"]))
                 connection.send({"ok": True})
@@ -416,6 +457,16 @@ class SubprocVecEnv:
             if "error" in response:
                 raise RuntimeError(f"vector env worker error: {response['error']}")
         self._levels = [str(level_id) for level_id in levels]
+
+    def autoreset(self) -> tuple[np.ndarray, np.ndarray]:
+        responses = self._broadcast({"cmd": "autoreset"})
+        slots = np.concatenate(
+            [np.asarray(response["slots"], dtype=np.int64) for response in responses]
+        )
+        observations = [row for response in responses for row in response["obs"]]
+        if slots.size == 0:
+            return slots, np.zeros((0, self.observation_dim), dtype=np.float32)
+        return slots, np.asarray(observations, dtype=np.float32)
 
     def set_reward(self, reward: RewardConfig) -> None:
         for connection in self._connections:

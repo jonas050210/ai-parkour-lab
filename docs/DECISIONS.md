@@ -178,6 +178,22 @@ taken while building and measuring the working system, each with the evidence th
   diagnostic findings are rule-based and unit-tested, and every claim they make is derived from
   the same ``ParkourEnv`` the trainer uses.
 
+### D-017 — Finished episodes hand out their reset observation; truncation bootstraps
+
+- **Decision:** ``vec.autoreset()`` returns the post-reset observation for every slot whose
+  episode just ended, and the trainer applies it before the next action. ``info["final_observation"]``
+  carries the terminal state, and ``compute_gae`` accepts a ``bootstrap`` term so a *truncated*
+  episode keeps ``r + gamma V(s_final)`` instead of collapsing to ``r``.
+- **Evidence:** a rollout row must be ``(state the action was applied in, action, reward)``. The
+  vector env auto-reset happened at the start of the next step, so the first action of every
+  episode was chosen from the previous episode's final state and stored against it — one corrupted
+  transition per episode, measured in a regression test that fails on the old code. Truncation was
+  folded into ``dones``, which makes the critic see a time limit as death; with episodes capped at
+  20 s and a stagnation timer, that bias is systematic rather than rare.
+- **Consequences:** vector envs have one more call in the loop (a handful of resets per rollout).
+  The contract is documented in ``vector.py`` and covered for both the serial and the subprocess
+  implementation, so a future env wrapper has to keep it.
+
 ## Open decisions / questions for the next design review
 
 These are the only questions that need a product/owner preference; they are not prerequisites for writing the Phase 1 prototype. Recommendations below are current best judgments.

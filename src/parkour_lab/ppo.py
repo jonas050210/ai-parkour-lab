@@ -88,23 +88,35 @@ def compute_gae(
     gamma: float,
     gae_lambda: float,
     last_value: float = 0.0,
+    bootstrap: np.ndarray | None = None,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Generalised advantage estimation for a single environment stream.
 
-    ``dones[t]`` marks that the transition ended an episode, so the bootstrap is cut.
+    ``dones[t]`` marks that the transition ended an episode, so the recursion is cut.
     ``last_value`` bootstraps the value of the state after the final step.
+
+    ``bootstrap[t]`` is used instead of ``gamma * 0`` for a *truncated* episode: the episode
+    stopped because of a time limit, so the state it reached still has value.  ``dones`` must
+    still be 1 there, which cuts the advantage recursion but keeps the target
+    ``r_t + gamma * V(s_final)``.
     """
 
     rewards = np.asarray(rewards, dtype=np.float64)
     values = np.asarray(values, dtype=np.float64)
     dones = np.asarray(dones, dtype=np.float64)
     steps = rewards.shape[0]
+    if bootstrap is None:
+        bootstrap = np.zeros(steps, dtype=np.float64)
+    else:
+        bootstrap = np.asarray(bootstrap, dtype=np.float64)
     advantages = np.zeros(steps, dtype=np.float64)
     last_advantage = 0.0
     for step in range(steps - 1, -1, -1):
         next_value = last_value if step == steps - 1 else values[step + 1]
         not_done = 1.0 - dones[step]
-        delta = rewards[step] + gamma * next_value * not_done - values[step]
+        delta = (
+            rewards[step] + gamma * next_value * not_done + bootstrap[step] - values[step]
+        )
         last_advantage = delta + gamma * gae_lambda * not_done * last_advantage
         advantages[step] = last_advantage
     returns = advantages + values

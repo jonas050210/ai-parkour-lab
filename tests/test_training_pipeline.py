@@ -561,3 +561,47 @@ def test_runs_without_stop_on_success_spend_their_budget(
     assert summary["stop_reason"] == "budget"
     assert summary["first_success"] is not None  # it happened, it just did not stop the run
     assert summary["status"] == "completed"
+
+
+def test_rollout_acts_on_the_reset_observation_after_an_episode_ends(
+    tmp_path: Path, spawn_finish_catalog: LevelCatalog
+) -> None:
+    """Every rollout row must be the state the action was actually applied in.
+
+    A finished episode leaves ``step`` with the terminal observation, and the environment is
+    reset only afterwards.  If the trainer ignored that reset it would pair the previous
+    episode's final state with the first action of the new one, once per episode.
+    """
+
+    from parkour_lab.storage import RunStore
+    from parkour_lab.training.runner import TrainingRunner
+
+    level = spawn_finish_catalog[0]
+    config = TrainConfig(
+        level_ids=(level.id,),
+        curriculum="single",
+        seed=7,
+        total_steps=10_000,
+        rollout_steps=6,
+        num_envs=2,
+        ppo=PPOConfig(epochs=1, minibatch_size=8),
+        hidden_dim=16,
+        randomize_reset=False,
+        eval_interval=10_000,
+        checkpoint_interval=10_000,
+        max_replays=0,
+        record_replay_every_eval=0,
+    )
+    store = RunStore.create(
+        tmp_path / "runs", run_id="stale-obs", name="stale-obs", config=config.to_dict()
+    )
+    runner = TrainingRunner(config, spawn_finish_catalog, store, logger=lambda _: None)
+    runner.setup()
+    try:
+        batch, metrics = runner._collect_rollout()
+    finally:
+        assert runner.vec is not None
+        runner.vec.close()
+    # Every control step completes the course, so every row starts a fresh episode.
+    assert metrics["episodes"] == config.rollout_steps * config.num_envs
+    np.testing.assert_allclose(batch.observations[0], batch.observations[-1], atol=1e-6)
