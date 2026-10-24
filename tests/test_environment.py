@@ -555,3 +555,40 @@ def test_successful_episode_reports_full_completion(catalog: LevelCatalog) -> No
         assert summary["completion_fraction"] == pytest.approx(1.0)
     finally:
         env.close()
+
+
+def test_action_bounds_report_the_reachable_joint_box(catalog: LevelCatalog) -> None:
+    """``action_scale`` shrinks the commanded range; ``inspect`` must be able to show it."""
+
+    level = catalog["level-01-basics"]
+    narrow = ParkourEnv(level, EnvConfig(level_id=level.id, action_scale=0.25))
+    wide = ParkourEnv(level, EnvConfig(level_id=level.id, action_scale=1.0))
+    try:
+        knee = narrow.humanoid.joint_names.index("knee_l")
+        limits = np.degrees(narrow.joint_limits_rad)
+        narrow_bounds = np.degrees(narrow.action_bounds())
+        wide_bounds = np.degrees(wide.action_bounds())
+        # Inside the joint limits, and reachable in both directions from the default pose.
+        assert np.all(narrow_bounds[:, 0] >= limits[:, 0] - 1e-6)
+        assert np.all(narrow_bounds[:, 1] <= limits[:, 1] + 1e-6)
+        # The box is ``default +/- scale * half_range``, so it is *half* the joint range at
+        # scale 1.0 and 12.5 % of it at the default 0.25 - not the full travel.
+        assert narrow_bounds[knee, 0] == pytest.approx(limits[knee, 0], abs=0.5)
+        assert narrow_bounds[knee, 1] == pytest.approx(2.0 + 0.25 * 69.0, abs=0.5)
+        assert wide_bounds[knee, 0] == pytest.approx(limits[knee, 0], abs=0.5)
+        assert wide_bounds[knee, 1] == pytest.approx(2.0 + 69.0, abs=0.5)
+        assert wide_bounds[knee, 1] < limits[knee, 1]
+        travel = np.diff(narrow_bounds, axis=1).ravel()
+        assert travel.max() < 90.0
+
+        # ``action_mode="range"`` is the only mapping that reaches both joint limits.
+        full = ParkourEnv(level, EnvConfig(level_id=level.id, action_mode="range"))
+        try:
+            full_bounds = np.degrees(full.action_bounds())
+            assert full_bounds[knee, 0] == pytest.approx(limits[knee, 0], abs=0.5)
+            assert full_bounds[knee, 1] == pytest.approx(limits[knee, 1], abs=0.5)
+        finally:
+            full.close()
+    finally:
+        narrow.close()
+        wide.close()

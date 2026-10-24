@@ -8,7 +8,7 @@ watching replays.
 **Status 2026-10-24.** The platform is implemented and tested end to end: 22 validated levels, a
 25-DoF humanoid, a working PPO trainer with checkpoints and resume, deterministic evaluation,
 replay export, a research dashboard, a bounded CEM tuner and a restricted research assistant.
-145 automated tests pass and `ruff check src tests` is clean. The *learning* result is partial
+159 automated tests pass and `ruff check src tests` is clean. The *learning* result is partial
 and reported honestly in [Learning status](#learning-status): PPO learns to stand and to make
 partial progress on the first course, but it does **not** yet complete parkour levels. Details in
 [docs/STATUS.md](docs/STATUS.md).
@@ -24,6 +24,7 @@ parkour list-levels            # difficulty, length, time limit per level
 parkour random --level level-01-basics --policy random --steps 400
 parkour train --level level-01-basics --run-id demo --steps 200000 --envs 4 --max-minutes 5
 parkour evaluate --checkpoint runs/demo/checkpoints/latest.npz --level level-01-basics
+parkour diagnose --checkpoint runs/demo/checkpoints/latest.npz   # why does it fail?
 parkour dashboard --port 8000  # http://localhost:8000
 ```
 
@@ -38,11 +39,12 @@ command reference, reward table and evaluation protocol.
 | Courses | 22 fixed manifests validated against a JSON Schema: platforms, steps, stairs, gaps, beams, hurdles, spikes, moving bridges, rooftop sequences, 2 held-out |
 | Environment | Gymnasium-shaped reset/step, 90-value documented observation, 19 bounded actions, per-component reward, 8 termination reasons, contact/energy diagnostics |
 | Learning | NumPy PPO (GAE + clipped surrogate + obs normalisation), 4 parallel envs, resumable checkpoints, deterministic evaluation, replay export |
+| Diagnostics | `parkour diagnose` traces episodes (speed, pelvis height, per-foot contact) and names the failure mode: standing, shuffling, hopping, seed sensitivity, collapse point |
 | Curriculum | `single`, `uniform` and `adaptive` (EWMA per-level performance, weakness weighting, novelty bonus, periodic retesting of mastered levels) |
 | Persistence | `runs/<id>/` with config, provenance (git commit, versions, CPU/GPU), CSV/JSONL metrics, checkpoints, evaluations, replays |
 | Dashboard | FastAPI + vendored Three.js: run browser, learning curves, per-level success, replay playback in 3D, run comparison, benchmark, start/stop one training process |
 | Secondary optimisers | Bounded CEM over 8 reward/PPO knobs; restricted Harness²-style assistant (11 bounded knobs, proposals only, never applied automatically) |
-| Tests | 145 tests: model/geometry, levels, environment mechanics, PPO math, training pipeline, CLI, dashboard endpoints, research tools |
+| Tests | 159 tests: model/geometry, levels, environment mechanics, PPO math, training pipeline, diagnostics, CLI, dashboard endpoints, research tools |
 
 ## Learning status
 
@@ -109,7 +111,7 @@ tools/generate_levels.py  deterministic level authoring (byte-identical regenera
 ## Tests
 
 ```bash
-pytest                 # 145 tests, ~42 s (includes two short real training runs)
+pytest                 # 159 tests, ~42 s (includes two short real training runs)
 ruff check src tests
 ```
 

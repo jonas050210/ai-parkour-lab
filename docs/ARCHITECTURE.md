@@ -50,6 +50,7 @@ humanoid.HumanoidSpec (25 DoF) ─────┤
 | `training/curriculum.py` | Level sampler (`single`, `uniform`, `adaptive`) and per-level performance summaries | Reward weights |
 | `training/runner.py` | Training loop, checkpointing, periodic evaluation, replays, CSV/JSONL metrics | Level authoring, UI |
 | `evaluation.py` | Deterministic/stochastic rollouts, aggregation, comparison, checkpoint-dynamics recovery | Training updates |
+| `diagnostics.py` | Traced rollouts (speed, pelvis height, per-foot contact) and named findings for a checkpoint | Training updates |
 | `storage.py` | Run directory layout, atomic JSON writes, run listing, provenance, deletion | Simulation |
 | `dashboard/server.py` | Read-only API over run directories, validated local train start/stop, static files | Physics simulation, model edits |
 | `training/evolution.py` | Bounded CEM over 8 declared parameters; every candidate is a real PPO run | Weight search, physics changes |

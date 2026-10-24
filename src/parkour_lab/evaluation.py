@@ -360,7 +360,9 @@ def env_config_from_checkpoint(extra: dict[str, Any], level_id: str) -> EnvConfi
         actuation=config.get("actuation", "position"),
         max_episode_seconds=config.get("max_episode_seconds"),
         reward=reward,
-        randomize_reset=False,
+        # Use what the run actually trained with.  Callers that want a fixed initial state
+        # (replays, matched-seed comparisons) pass ``randomize_reset`` explicitly.
+        randomize_reset=bool(config.get("randomize_reset", True)),
     )
 
 

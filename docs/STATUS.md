@@ -13,6 +13,7 @@ and how to reproduce every claim. It is the document to read before trusting any
 | Scripted/random rollouts | `parkour random` | `tests/test_cli.py::test_random_policy_runs_and_reports` |
 | PPO training with checkpoints, resume, replays | `parkour train` | `tests/test_training_pipeline.py` (real 1 024-step run, resume, reproducibility) |
 | Deterministic multi-seed evaluation | `parkour evaluate` | `tests/test_cli.py`, `tests/test_training_pipeline.py` |
+| Failure analysis of a checkpoint (hop/stand/collapse, per seed) | `parkour diagnose` | `tests/test_diagnostics.py` (5 tests), `tests/test_cli.py::test_diagnose_command_explains_a_checkpoint` |
 | Replay export (data only, no rendering) | `parkour replay` | `tests/test_cli.py::test_replay_command_writes_a_frame_log` |
 | Run listing and paired comparison | `parkour runs`, `parkour compare` | `tests/test_cli.py` |
 | Throughput benchmark | `parkour benchmark` | `tests/test_cli.py::test_benchmark_runs_a_short_sweep` |
@@ -20,7 +21,7 @@ and how to reproduce every claim. It is the document to read before trusting any
 | Bounded CEM over reward/PPO knobs | `parkour evolve` | `tests/test_research_tools.py`, `tests/test_cli.py` |
 | Restricted research assistant | `parkour harness status/plan/probe` | `tests/test_research_tools.py` |
 
-Test suite: **145 tests** (`pytest`, ~42 s) and `ruff check src tests` clean.
+Test suite: **159 tests** (`pytest`, ~36 s) and `ruff check src tests` clean.
 
 ## 2. The model and the task
 
@@ -170,6 +171,12 @@ beyond "the level-01 policy transfers weakly and falls over": the 20-level sweep
 | Run list showed `summary.total_steps`, i.e. the *budget* recorded at startup | a live 2.5 M-step run displayed as "5,000,000 steps" and a finished-looking card; killed runs without a pid also showed "running" forever | `test_run_list_separates_progress_from_the_step_budget`, `test_running_run_without_pid_goes_stale` |
 | "Best evaluation" ranked on success only | every run with 0 % success reported its *first* evaluation as best (13 % instead of 59 % for `walk-e`) | `test_best_evaluation_breaks_success_ties_on_completion` |
 | `rollout_episode` never wrote `result.observation` back into the loop variable | every `parkour evaluate` episode, replay and Harness²/CEM score ran the policy open-loop on the reset frame — 10.3 % instead of 45.5 % completion for the same checkpoint | `test_rollout_episode_is_closed_loop`, `test_rollout_episode_matches_a_manual_loop` |
+| Rollout actions were sampled outside the control range and scored there | the env clips to [-1, 1]; 24.6 % of action dimensions in a trained rollout (99 % of steps) were clipped, so PPO stored log-probabilities for actions that were never applied | `test_sampled_actions_stay_inside_the_control_range` |
+| `benchmark_simulation` ignored `workers` and the CLI overwrote the label | `parkour benchmark --workers` printed configurations it never ran, and the "best measured configuration" could recommend an unmeasured layout | `test_benchmark_simulation_measures_the_requested_worker_layout` |
+| `--eval-episodes N` was truncated to `len(seeds)` | asking for 8 episodes with 3 seeds silently ran 3 | `test_evaluation_runs_the_requested_number_of_episodes` |
+| Finished episodes were labelled with the level assigned for the *next* reset | per-level statistics (and therefore the adaptive curriculum) could be attributed to the wrong level | `test_finished_episode_is_labelled_with_the_level_it_ran` |
+| A successful episode reported ~85 % completion | `completion` is a raw distance ratio while success only needs the finish disc | `test_successful_episode_reports_full_completion` |
+| `env_config_from_checkpoint` hard-coded `randomize_reset=False` | any tool that did not override it replayed three identical "seeds" | `test_diagnose_uses_every_seed` |
 
 ## 6. How to reproduce
 

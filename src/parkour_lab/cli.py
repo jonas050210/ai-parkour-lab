@@ -2,7 +2,8 @@
 
 Everything the project can do is reachable from here: inspect the model and levels,
 run a random or trained policy headlessly, train (single level or adaptive all-level),
-evaluate and compare checkpoints, record/export replays, benchmark parallel environments,
+evaluate, diagnose and compare checkpoints, record/export replays, benchmark parallel
+environments,
 open the native MuJoCo viewer, and serve the research dashboard.
 """
 
@@ -20,6 +21,7 @@ from typing import Any, Sequence
 import numpy as np
 
 from . import __version__
+from .diagnostics import diagnose_policy, format_diagnosis
 from .env import ACTION_DIM, OBSERVATION_NAMES, EnvConfig, ParkourEnv
 from .evaluation import (
     EvalConfig,
@@ -193,20 +195,36 @@ def command_inspect(args: argparse.Namespace) -> int:
             f"    {obstacle.id:<20} {obstacle.kind:<16} pos={obstacle.position.as_tuple()} "
             f"size={obstacle.size.as_tuple()} top={obstacle.top_z:.2f}{extra}"
         )
-    env = ParkourEnv(level, EnvConfig(level_id=level.id))
+    env = ParkourEnv(level, EnvConfig(level_id=level.id, action_scale=args.action_scale))
     try:
         print("\nhumanoid inventory")
         print(f"  total mass {spec.total_mass:.2f} kg over {len(spec.bodies)} bodies")
+        bounds = np.degrees(env.action_bounds())
         for group, joints in spec.by_group().items():
             print(f"  {group}: {len(joints)} joints")
-            for joint in joints:
+            for index, joint in enumerate(joints):
+                slot = env.humanoid.joint_names.index(joint.name)
+                reachable = bounds[slot]
                 print(
                     f"    {joint.name:<20} range=[{joint.lower:7.1f}, {joint.upper:6.1f}] deg "
+                    f"reach=[{reachable[0]:6.1f}, {reachable[1]:6.1f}] travel={reachable[1] - reachable[0]:5.1f} deg "
                     f"kp={joint.kp:5.0f} force={joint.force_limit:5.0f} default={joint.default:5.1f}"
                 )
         print(f"\nobservation: {len(OBSERVATION_NAMES)} task values + 3x{ACTION_DIM} proprio")
         print("  " + ", ".join(OBSERVATION_NAMES[:12]) + ", ...")
-        print(f"action: {env.action_dim} clamped joint targets in [-1, 1]")
+        print(
+            f"action: {env.action_dim} clamped joint targets in [-1, 1] around the default pose, "
+            f"action_scale={args.action_scale:.2f}"
+        )
+        travel = np.diff(bounds, axis=1).ravel()
+        knee = env.humanoid.joint_names.index("knee_l")
+        print(
+            f"  reachable travel per joint: {travel.min():.1f}-{travel.max():.1f} deg "
+            f"(knee_l {travel[knee]:.1f} deg of its "
+            f"{spec.joints[knee].upper - spec.joints[knee].lower:.0f} deg range). "
+            "The box is default +/- scale * half_range; raise --action-scale (or use "
+            "action_mode='range') for more authority."
+        )
         print(f"model: nq={env.model.nq} nv={env.model.nv} nu={env.model.nu} "
               f"timestep={env.model.opt.timestep}")
     finally:
@@ -391,6 +409,37 @@ def _checkpoint_env_config(args: argparse.Namespace, level_id: str) -> EnvConfig
     if extra and extra.get("config"):
         return _env_config_from_checkpoint(extra, level_id)
     return EnvConfig(level_id=level_id)
+
+
+def command_diagnose(args: argparse.Namespace) -> int:
+    """Explain what a checkpoint's policy actually does, one traced episode per seed."""
+
+    catalog = _catalog(args)
+    model = _load_policy(args)
+    extra = getattr(args, "_checkpoint_extra", None) or {}
+    recorded = [str(level_id) for level_id in extra.get("level_ids") or []]
+    if args.level:
+        level_id = args.level
+    elif recorded:
+        level_id = recorded[0]
+    else:
+        level_id = catalog.train_levels[0].id
+    level = catalog[level_id]
+    env_config = _checkpoint_env_config(args, level.id)
+    seeds = tuple(args.eval_seeds) if args.eval_seeds else EvalConfig().seeds
+    diagnosis = diagnose_policy(
+        model,
+        level,
+        seeds=seeds,
+        env_config=env_config,
+        deterministic=not args.stochastic,
+    )
+    if args.json:
+        print(json.dumps(_jsonable(diagnosis), indent=2))
+    else:
+        print(f"checkpoint: {args.checkpoint}")
+        print(format_diagnosis(diagnosis))
+    return 0
 
 
 def command_evaluate(args: argparse.Namespace) -> int:
@@ -787,6 +836,13 @@ def build_parser() -> argparse.ArgumentParser:
 
     inspect = subparsers.add_parser("inspect", help="inspect a level and the humanoid")
     inspect.add_argument("--level", default=None, help="level id (default: first level)")
+    inspect.add_argument(
+        "--action-scale",
+        dest="action_scale",
+        type=float,
+        default=0.25,
+        help="action box scale used for the reachable-range column (default 0.25)",
+    )
     inspect.set_defaults(func=command_inspect)
 
     export = subparsers.add_parser("export-mjcf", help="export the MJCF scene for a level")
@@ -891,6 +947,17 @@ def build_parser() -> argparse.ArgumentParser:
     train_cmd.add_argument("--notes", default=None)
     train_cmd.add_argument("--resume", default=None, help="checkpoint path to resume from")
     train_cmd.set_defaults(func=command_train)
+
+    diagnose = subparsers.add_parser(
+        "diagnose", help="trace episodes and explain why a checkpoint fails"
+    )
+    diagnose.add_argument("--checkpoint", required=True)
+    diagnose.add_argument("--level", default=None)
+    diagnose.add_argument("--eval-seeds", nargs="+", type=int, default=None)
+    diagnose.add_argument("--stochastic", action="store_true")
+    diagnose.add_argument("--seed", type=int, default=0)
+    diagnose.add_argument("--json", action="store_true")
+    diagnose.set_defaults(func=command_diagnose)
 
     evaluate = subparsers.add_parser("evaluate", help="evaluate a checkpoint deterministically")
     evaluate.add_argument("--checkpoint", required=True)

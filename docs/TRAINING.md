@@ -142,6 +142,49 @@ Reported per level: episodes, success rate, mean/σ completion, mean return, mea
 termination histogram. `parkour compare --run-a A --run-b B` prints the paired per-level difference
 between the best evaluation of each run.
 
+## Diagnosing a checkpoint
+
+Aggregates say whether a run improved; they cannot say whether the robot hops, shuffles or walks.
+`parkour diagnose` replays one episode per seed with the checkpoint's own dynamics and reports what
+the body actually did:
+
+```bash
+parkour diagnose --checkpoint runs/walk-e/checkpoints/latest.npz --eval-seeds 11 23 37 41 53
+parkour diagnose --checkpoint runs/walk-e/checkpoints/latest.npz --json > diagnosis.json
+```
+
+```
+level-01-basics (First Steps): 0/5 episodes complete, mean completion 47.7 %, mean speed 0.82 m/s
+  seed  completion  distance    speed   flight  end
+    11       58.6%     3.56m    0.94     18%  collapsed
+    53        3.0%     0.20m    0.24     64%  collapsed
+
+! 0/5 episodes reach the finish; dominant ending is 'collapsed' (5/5).
+! both feet are airborne for 29 % of control steps: the policy hops rather than walks.
+· completion ranges 3–59 % across seeds; the worst is seed 53 (collapsed, 0.20 m).
+```
+
+The findings are rule-based (`diagnostics.py`), named (`hopping`, `shuffling`, `stuck_near_start`,
+`no_weight_transfer`, `seed_sensitivity`, `collapse_height`, `success`) and computed from the same
+`ParkourEnv` the trainer uses. It costs a handful of episodes — no training, no weight changes.
+
+## The action box is much smaller than the joint limits
+
+`action_scale` is applied as `default_joint_position ± scale × half_joint_range`, so the policy can
+only command a narrow box around the standing pose. `parkour inspect` prints the reachable travel per
+joint:
+
+| Joint | Joint range | Reachable at 0.25 | Reachable at 1.0 |
+|---|---|---|---|
+| `knee_l` | 2–140° | 2–19.2° (17.2°) | 2–71° (69°) |
+| `hip_pitch_l` | −115–45° | −20–20° (40°) | −69–69° (clipped) |
+| `ankle_l` | −48–42° | −13.2–9.2° (22.5°) | −24.5–19.5° |
+
+That is deliberate — a small box is what makes early PPO stable — but it also bounds what the robot
+can physically do: at scale 0.25 the knee travels 17° of 138°, so deep crouches and full strides are
+outside the action space. `--action-scale` widens the box and `EnvConfig.action_mode="range"` maps
+[-1, 1] onto the full joint limits. Any comparison of learning recipes should state which box it used.
+
 ## Replays
 
 `--record-replay` (evaluate) or `parkour replay` writes gzipped JSON with one entry per captured

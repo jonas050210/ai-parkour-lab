@@ -161,6 +161,23 @@ taken while building and measuring the working system, each with the evidence th
 - **Consequences:** neither tool can silently replace the physics engine, the controller or the
   learning algorithm, which is the standing project constraint.
 
+### D-016 — Closed-loop, in-range actions and a diagnostic tool instead of more reward tuning
+
+- **Decision:** the rollout samples actions clipped to the executed range ``[-1, 1]`` and stores
+  the log-probability of the clipped action; the reachable joint box is reported by
+  ``parkour inspect``; ``parkour diagnose`` traces episodes and names the failure mode. Reward
+  weights stay as they are.
+- **Evidence:** 24.6 % of action dimensions in a trained rollout were clipped by the environment
+  while PPO scored the unclipped sample. Five reward recipes (dense progress, annealed progress,
+  gait shaping, survival-first, flight penalty + gait floor) all converge to 0 % success with
+  47–59 % completion, so the next question is *what the body does*, not what the scalar reward is.
+  Tracing answers that in seconds: the 5 M-step policy hops (18–22 % flight phase), reaches
+  3.56 m and collapses at a 0.45 m pelvis height, while a standing policy is flagged as
+  "shuffling" and a hopping one as "hopping".
+- **Consequences:** training recipes are only comparable if they report their action box; the
+  diagnostic findings are rule-based and unit-tested, and every claim they make is derived from
+  the same ``ParkourEnv`` the trainer uses.
+
 ## Open decisions / questions for the next design review
 
 These are the only questions that need a product/owner preference; they are not prerequisites for writing the Phase 1 prototype. Recommendations below are current best judgments.

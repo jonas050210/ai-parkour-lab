@@ -447,6 +447,23 @@ class ParkourEnv:
     def action_dim(self) -> int:
         return len(self.humanoid.joints)
 
+    def action_bounds(self) -> np.ndarray:
+        """Joint interval (radians) that an action in ``[-1, 1]`` can actually reach.
+
+        In ``centered`` mode the box is ``default +/- scale * half_range`` around the standing
+        pose, so the commanded range is much narrower than the joint limits: at the default
+        0.25 the knee travels from 2.0 deg to 19.2 deg of its 2-140 deg range, and even at
+        scale 1.0 only to 71 deg because the default sits at the bottom of the range.  The
+        full limits are only reachable with ``action_mode="range"``.  Nothing else in the
+        stack reports this, and it decides what the humanoid is physically able to do.
+        """
+
+        if self.config.actuation != "position":
+            return np.array(self.model.actuator_ctrlrange[self.actuator_ids], dtype=np.float64)
+        low = np.maximum(self._action_center - self._action_span, self.joint_limits_rad[:, 0])
+        high = np.minimum(self._action_center + self._action_span, self.joint_limits_rad[:, 1])
+        return np.stack([low, high], axis=1)
+
     @property
     def observation_dim(self) -> int:
         return observation_dim(self.action_dim)
@@ -628,6 +645,9 @@ class ParkourEnv:
             "forward_speed": float(self.data.qvel[0]),
             "contact_force": contact_force,
             "foot_contact": foot_contact,
+            # Per-foot load state: the diagnostics tool and the gait reward both need it.
+            "left_contact": foot_state[0],
+            "right_contact": foot_state[1],
             "action_saturation": saturation,
             "hazard_contact": hazard_hit,
             "progress_fraction": self._progress_fraction(),

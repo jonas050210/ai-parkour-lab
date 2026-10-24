@@ -377,3 +377,21 @@ def test_train_cli_records_a_run(capsys: pytest.CaptureFixture[str], tmp_path: P
     store_config = json.loads((tmp_path / "cli-train" / "config.json").read_text())
     assert store_config["max_episode_seconds"] == pytest.approx(3.0)
     assert store_config["hidden_dim"] == 16
+
+
+def test_diagnose_command_explains_a_checkpoint(
+    trained: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    checkpoint = trained / "cli-run" / "checkpoints" / "latest.npz"
+    assert main(["diagnose", "--checkpoint", str(checkpoint), "--level", LEVEL,
+                 "--eval-seeds", "11", "23"]) == 0
+    text = capsys.readouterr().out
+    assert "episodes complete" in text
+    assert "seed" in text
+
+    assert main(["diagnose", "--checkpoint", str(checkpoint), "--json"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["level_id"] == LEVEL  # taken from the checkpoint's recorded levels
+    assert payload["episodes"] == 3  # default evaluation seeds
+    assert {"success_rate", "mean_completion", "findings", "traces"} <= set(payload)
+    assert len(payload["traces"]) == payload["episodes"]
