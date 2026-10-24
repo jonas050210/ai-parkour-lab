@@ -1,66 +1,123 @@
 # AI Parkour Lab
 
-A local-first research project for teaching a physically simulated humanoid to traverse progressively harder parkour courses. The long-term system combines articulated-body physics, reinforcement learning, evolutionary search, reusable experience, persistent experiment records, and a 3D research dashboard.
+A local-first platform for training a physically simulated humanoid to traverse fixed parkour
+courses. Everything runs on a CPU-only machine: MuJoCo for physics, NumPy PPO for learning,
+a CLI for training/evaluation/replay, and a local browser dashboard for inspecting runs and
+watching replays.
 
-> **Status — research and foundation phase (2026-10-23).** The repository currently contains the research plan, initial interfaces, configuration/level templates, and documentation. It does **not** yet contain a physics environment, a trainable policy, a dashboard, a trained agent, or a working Harness² integration. No training has been run.
+**Status 2026-10-24.** The platform is implemented and tested end to end: 22 validated levels, a
+25-DoF humanoid, a working PPO trainer with checkpoints and resume, deterministic evaluation,
+replay export, a research dashboard, a bounded CEM tuner and a restricted research assistant.
+141 automated tests pass and `ruff check src tests` is clean. The *learning* result is partial
+and reported honestly in [Learning status](#learning-status): PPO learns to stand and to make
+partial progress on the first course, but it does **not** yet complete parkour levels. Details in
+[docs/STATUS.md](docs/STATUS.md).
 
-## Research goals
+## Quick start
 
-- Start with a randomly initialized policy and measure how it learns, rather than silently giving it a parkour policy or motion-tracking controller.
-- Simulate a complete articulated humanoid and make actuation limits, contact, falls, and obstacle interactions consequential.
-- Progress through fixed, named levels: safe movement and low steps, jumps and gaps, hazards, moving surfaces, advanced transitions, and height exposure.
-- Compare algorithms and curriculum changes with seeded, held-out evaluation—not only a single best run.
-- Keep policies, checkpoints, course definitions, metrics, and experiment provenance on disk.
-- Show the course and selected runs in a responsive 3D viewer, while keeping the dashboard out of the training hot path.
+```bash
+python3.11 -m venv .venv && . .venv/bin/activate
+python -m pip install -e ".[dev]"
 
-## Proposed direction
+parkour doctor                 # environment + 22-level catalogue check
+parkour list-levels            # difficulty, length, time limit per level
+parkour random --level level-01-basics --policy random --steps 400
+parkour train --level level-01-basics --run-id demo --steps 200000 --envs 4 --max-minutes 5
+parkour evaluate --checkpoint runs/demo/checkpoints/latest.npz --level level-01-basics
+parkour dashboard --port 8000  # http://localhost:8000
+```
 
-| Concern | Starting recommendation | Status |
-|---|---|---|
-| Physics/model authoring | MuJoCo MJCF; validate one environment with ordinary MuJoCo first | Research recommendation; not implemented |
-| Batched NVIDIA training | Evaluate MuJoCo Warp through `mjlab`; start small and profile the actual humanoid | Candidate backend; not installed or hardware-verified |
-| Initial learning | PPO with joint-target/torque-limited control; evolve outer-loop parameters after a reproducible PPO baseline | Research recommendation; not implemented |
-| Experiment records | Local run directories, versioned configs, JSONL summaries, checkpoints, and TensorBoard | Planned |
-| 3D dashboard | React + TypeScript + Three.js / React Three Fiber, served alongside a local API | Planned |
-| Harness² | Optional developer/research-agent experiment harness, separate from the simulated controller and RL optimizer | Investigated; not integrated |
+No GPU, display or Node.js is needed. See [docs/TRAINING.md](docs/TRAINING.md) for the full
+command reference, reward table and evaluation protocol.
 
-The intended development machine is Linux with an NVIDIA RTX 4060 Ti (8 GB VRAM) and 32 GB RAM. The 8 GB limit is material: the plan begins with headless training and a small measured environment batch, leaves memory headroom, and only scales after profiling. The actual CUDA driver, GPU memory availability, and supported package combination must be checked on the target computer; results are not guaranteed by this plan.
+## What works (and is tested)
+
+| Area | State |
+|---|---|
+| Articulated humanoid | 25 DoF / 19 actuated joints, explicit joint limits, force limits, position and activation-filtered torque actuation, procedural MJCF |
+| Courses | 22 fixed manifests validated against a JSON Schema: platforms, steps, stairs, gaps, beams, hurdles, spikes, moving bridges, rooftop sequences, 2 held-out |
+| Environment | Gymnasium-shaped reset/step, 90-value documented observation, 19 bounded actions, per-component reward, 8 termination reasons, contact/energy diagnostics |
+| Learning | NumPy PPO (GAE + clipped surrogate + obs normalisation), 4 parallel envs, resumable checkpoints, deterministic evaluation, replay export |
+| Curriculum | `single`, `uniform` and `adaptive` (EWMA per-level performance, weakness weighting, novelty bonus, periodic retesting of mastered levels) |
+| Persistence | `runs/<id>/` with config, provenance (git commit, versions, CPU/GPU), CSV/JSONL metrics, checkpoints, evaluations, replays |
+| Dashboard | FastAPI + vendored Three.js: run browser, learning curves, per-level success, replay playback in 3D, run comparison, benchmark, start/stop one training process |
+| Secondary optimisers | Bounded CEM over 8 reward/PPO knobs; restricted Harness²-style assistant (11 bounded knobs, proposals only, never applied automatically) |
+| Tests | 141 tests: model/geometry, levels, environment mechanics, PPO math, training pipeline, CLI, dashboard endpoints, research tools |
+
+## Learning status
+
+Training is honest about where it is. On `level-01-basics` (a 6 m flat runway with one 10 cm
+step), from a randomly initialised policy:
+
+* **Works:** standing and recovering. A posture-only reward learns to stay upright for the whole
+  episode (zero action stays up for 2 000+ control steps; a 250 k-step run reaches the episode cap
+  in ~56 % of episodes).
+* **Partially works:** progress. With an annealed reward (posture → forward), the policy learns to
+  move ~2.7 m toward the finish before collapsing, which is 45 % of the first course after 1.7 M
+  steps, and it is still improving. Deterministic and stochastic evaluation agree within 0.1 pt.
+* **Does not work yet:** completing a course (0 % success, every episode ends in `collapsed`), a
+  stable walking gait, and therefore all the harder levels (`level-02-step-up`: 12 % completion).
+
+A one-line bug in the evaluation loop used to report an open-loop controller, which is why older
+numbers in this repo looked ~4× worse than the policy actually is. It is fixed, and two tests now
+pin the closed loop (`docs/STATUS.md`, §5).
+
+Two dead ends are documented rather than hidden: a dense progress reward from step 0 teaches a
+"lunge and fall" policy, and a gait-shaped reward without a no-progress termination teaches
+"march in place". A scripted open-loop CPG search (2 000+ parameter combinations) also failed to
+produce a stable gait on this morphology, so the remaining gap looks morphological/actuation-relevant
+as well as sample-budget-relevant. Concrete next steps are listed in
+[docs/STATUS.md](docs/STATUS.md#what-remains-unfinished).
+
+## Architecture in one paragraph
+
+A level manifest plus the humanoid spec compile into one MJCF scene; `ParkourEnv` wraps it as a
+Gymnasium-style environment; vectorised envs feed a NumPy PPO learner which writes runs to disk;
+evaluation reloads a checkpoint with its recorded dynamics; the dashboard reads the same
+directories and replays captured frames in the browser. The physics engine, the controller and the
+learning algorithm are never replaced by the optional research tools. See
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Repository map
 
 ```text
-configs/
-  default.toml                 Future run defaults (not yet consumed by an application)
-  levels/
-    level.schema.json          Versioned JSON contract for fixed courses
-    level-01-basics.json       Example easy course manifest, not a simulation
+configs/levels/           22 level manifests + level.schema.json
+docs/                     ARCHITECTURE, DECISIONS, ROADMAP, RESEARCH, TRAINING, STATUS
 src/parkour_lab/
-  contracts.py                 Dependency-free boundaries for later components
-  __init__.py
-docs/
-  RESEARCH.md                  Source-checked comparisons and conclusions
-  ARCHITECTURE.md              Components, data flow, and Harness² boundary
-  ROADMAP.md                   Phases and acceptance criteria
-  DECISIONS.md                 Decision log and open questions
-tests/
-  test_foundation.py           Checks the starter config and example manifest
+  humanoid.py             articulated humanoid + MJCF generation
+  levels.py               manifest loading/validation, catalogue
+  course.py               level + humanoid -> MJCF scene
+  env.py                  ParkourEnv, rewards, terminations, diagnostics
+  policies.py  ppo.py     NumPy actor-critic and PPO update
+  training/               vector envs, curriculum, runner, bounded evolution
+  evaluation.py           rollouts, aggregation, comparison
+  storage.py              run directories, provenance, listing
+  dashboard/              FastAPI app + static Three.js front-end
+  harness2.py             restricted research assistant
+  cli.py                  the `parkour` command
+tests/                    nine focused test modules
+tools/generate_levels.py  deterministic level authoring (byte-identical regeneration)
 ```
 
-Generated runs, datasets, TensorBoard event files, and model weights belong in ignored `data/` or `runs/`, not Git. See [docs/RESEARCH.md](docs/RESEARCH.md) for evidence and [docs/ROADMAP.md](docs/ROADMAP.md) for the next steps.
-
-## Foundation checks
-
-Python 3.12 is the planned development baseline. The metadata, interfaces, and templates use only the standard library; the foundation tests use the optional test extra (pytest, Ruff, and JSON Schema validation):
+## Tests
 
 ```bash
-python3.12 -m venv .venv
-. .venv/bin/activate
-python -m pip install -e ".[dev]"
-pytest
+pytest                 # 141 tests, ~42 s (includes two short real training runs)
+ruff check src tests
 ```
 
-The optional `sim`, `training`, and `web` extras describe later integration points; they are not required for these checks. Installing an extra alone does not create an environment, trainer, or web application. See `pyproject.toml` and [docs/DECISIONS.md](docs/DECISIONS.md) before choosing a backend or adding a large dependency stack.
+`pytest -m "not slow"` skips the end-to-end training tests. The training tests really train a
+small policy, evaluate it, resume it, and compare two runs — they are not mocks.
 
 ## Honest scope
 
-This repository is a plan and a small software foundation, not a playable game or an implemented AI lab. Success criteria, model fidelity, training speed, algorithm comparisons, and local GPU compatibility remain to be established by the implementation phases. The level manifest is a data contract only; it does not spawn geometry or define physics by itself.
+* The humanoid is a game/physics model, not an anatomical or biomechanical one. "Muscle" actuation
+  means activation-filtered torque with a force ceiling, not Hill-type muscles.
+* MJWarp / mjlab were not installed or benchmarked on this 2-vCPU, no-GPU host, so no performance
+  claim is made about them; the NumPy PPO baseline is what was measured.
+* The dashboard has no authentication and binds to the local machine by default; the training
+  endpoint can start one process at a time and is meant for a trusted workstation, not a server.
+* Level geometry is authored by hand-tuned generator code; difficulty ordering is by design
+  intent, not by measured agent performance.
+
+Training data, checkpoints and replays are ignored by Git (`runs/`).

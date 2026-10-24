@@ -1,6 +1,23 @@
 # Roadmap
 
-Phases are ordered to expose physics, measurement, and compute risks before adding algorithmic or interface complexity. A phase is complete only when its acceptance criteria have evidence in tests or a saved, reproducible run. No large training run is authorized by this roadmap.
+Phases are ordered to expose physics, measurement, and compute risks before adding algorithmic or interface complexity. A phase is complete only when its acceptance criteria have evidence in tests or a saved, reproducible run.
+
+## Status as built (2026-10-24)
+
+| Phase | State | Evidence |
+|---|---|---|
+| 0 — Research and foundation | **done** | docs, schema, starter config, 141 passing tests |
+| 1 — One-world physics and measurement | **done** | 25-DoF humanoid, `ParkourEnv`, contact/termination/reward diagnostics, `tests/test_environment.py` (18 tests) |
+| 2 — Fixed course suite and reproducible evaluation | **done** | 22 validated levels, deterministic multi-seed evaluation with checkpoint dynamics, `parkour compare`, held-out split |
+| 3 — Small-batch PPO baseline | **done, goal not reached** | PPO trains, resumes, checkpoints and evaluates reproducibly; it learns standing and 14–21 % of level-01 but never completes a course. See [STATUS.md](STATUS.md#learning-status) |
+| 4 — Bounded evolution / experience | **partial** | CEM over 8 knobs works and is tested (`tests/test_research_tools.py`); no experience-retrieval layer, no PBT comparison |
+| 5 — Local 3D research dashboard | **done** | FastAPI + Three.js viewer, run browser, curves, per-level bars, replay playback, comparison, benchmark, validated start/stop; `tests/test_dashboard.py` |
+| 6 — Harness²-style assistant | **done (restricted pilot)** | rule-based proposals over 11 bounded knobs, probe reports, no auto-apply; network planner disabled by default |
+
+Phase 3's learning target is the open item: the platform around the learner is complete, but the
+humanoid does not yet walk. The concrete diagnosis and the next experiments are in
+[STATUS.md](STATUS.md#what-remains-unfinished).
+
 
 ## Phase 0 — Research and foundation (current)
 

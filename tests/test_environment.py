@@ -392,3 +392,83 @@ def test_stagnation_timer_uses_simulated_seconds(catalog: LevelCatalog) -> None:
         assert steps * 0.02 == pytest.approx(1.5, abs=0.05)
     finally:
         env.close()
+
+
+class _ObservingPolicy:
+    """Deterministic stand-in policy that records the observations it acts on."""
+
+    def __init__(self) -> None:
+        self.observations: list[np.ndarray] = []
+
+    def act(
+        self,
+        observation: np.ndarray,
+        *,
+        deterministic: bool = True,
+        rng: np.random.Generator | None = None,
+    ) -> np.ndarray:
+        current = np.asarray(observation, dtype=np.float64).reshape(-1)
+        self.observations.append(current.copy())
+        return np.tanh(current[:ACTION_DIM]) * 0.2
+
+
+def test_rollout_episode_is_closed_loop(catalog: LevelCatalog) -> None:
+    """Regression: ``rollout_episode`` must feed the new observation back to the policy.
+
+    The evaluation loop used to act on the reset observation for the whole episode, so
+    every reported success/completion figure was measured with an open-loop controller.
+    """
+
+    from parkour_lab.evaluation import rollout_episode
+
+    level = catalog["level-01-basics"]
+    policy = _ObservingPolicy()
+    record = rollout_episode(
+        policy,
+        level,
+        seed=7,
+        deterministic=True,
+        randomize_reset=False,
+    )
+    observations = np.asarray(policy.observations)
+    assert observations.shape == (record["sim_steps"], OBSERVATION_DIM)
+    assert record["sim_steps"] > 5
+    # The very next observation after the reset must already differ from it.
+    assert not np.allclose(observations[0], observations[1])
+    # ... and the policy keeps seeing fresh state, not one frozen frame.
+    assert np.abs(observations - observations[0]).max() > 1e-2
+
+
+def test_rollout_episode_matches_a_manual_loop(catalog: LevelCatalog) -> None:
+    """The shared rollout must be exactly what a hand-written closed loop produces."""
+
+    from parkour_lab.evaluation import rollout_episode
+
+    level = catalog["level-01-basics"]
+    config = EnvConfig(
+        level_id=level.id, max_episode_seconds=2.0, stagnation_seconds=0.0, seed=13
+    )
+    record = rollout_episode(
+        _ObservingPolicy(),
+        level,
+        seed=13,
+        env_config=config,
+        deterministic=True,
+        randomize_reset=False,
+    )
+    manual_policy = _ObservingPolicy()
+    manual_env = ParkourEnv(level, config)
+    try:
+        observation, _ = manual_env.reset(seed=13, options={"deterministic": True})
+        while True:
+            result = manual_env.step(manual_policy.act(observation))
+            observation = result.observation
+            if result.terminated or result.truncated:
+                break
+        manual = manual_env.episode_summary()
+    finally:
+        manual_env.close()
+    assert record["sim_steps"] == manual["sim_steps"]
+    assert record["termination_reason"] == manual["termination_reason"]
+    assert record["completion_fraction"] == pytest.approx(manual["completion_fraction"])
+    assert record["episode_return"] == pytest.approx(manual["episode_return"])

@@ -83,6 +83,10 @@ def rollout_episode(
     while True:
         action = policy.act(observation, deterministic=deterministic, rng=generator)
         result = env.step(action)
+        # Closed loop: the policy must act on the state it just reached.  Forgetting this
+        # assignment left every evaluation episode acting on the reset observation, which
+        # silently produced much worse (and meaningless) evaluation numbers.
+        observation = result.observation
         if result.terminated or result.truncated:
             break
     summary = env.episode_summary()

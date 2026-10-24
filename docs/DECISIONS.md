@@ -94,14 +94,21 @@ taken while building and measuring the working system, each with the evidence th
 - **Decision:** `env_config_from_checkpoint()` rebuilds the recorded `action_scale`,
   `action_smoothing`, timestep, decimation, actuation and reward; `rollout_episode(..., randomize_reset=True)`
   perturbs the initial state per seed while keeping the action deterministic.
-- **Evidence:** two bugs found by comparing training and evaluation behaviour. (1) `rollout_episode`
+- **Evidence:** three bugs found by comparing training and evaluation behaviour. (1) `rollout_episode`
   rebuilt `EnvConfig` field-by-field when recording frames, silently dropping action scaling,
   smoothing, actuation and reward — replays showed different dynamics from training. (2) With a
   deterministic policy *and* disabled reset noise, every evaluation seed played the identical
   episode, so a 3-seed evaluation was really one sample and looked artificially stable.
+  (3) The evaluation loop never assigned `observation = result.observation`, so the policy acted on
+  the reset frame for the whole episode: an open-loop controller scored 10.3 % where the same
+  checkpoint scored 45.5 % in closed loop. The follow-on lesson is procedural — a rollout helper
+  that is *not* differentially tested against a hand-written loop can be wrong for months.
 - **Consequences:** the CLI `evaluate`, `replay`, the runner's periodic evaluation and the
   Harness² probe all go through the same helper; seeds are still exactly reproducible because the
-  reset noise is drawn from a per-seed generator.
+  reset noise is drawn from a per-seed generator. `test_rollout_episode_matches_a_manual_loop`
+  pins the helper to a hand-written closed loop, and `test_rollout_episode_is_closed_loop` asserts
+  that the policy sees a fresh observation every step, so the open-loop regression cannot return
+  silently.
 
 ### D-012 — Reward annealing plus a gait term instead of one hand-tuned dense reward
 
