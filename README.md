@@ -68,7 +68,10 @@ Two dead ends are documented rather than hidden: a dense progress reward from st
 "lunge and fall" policy, and a gait-shaped reward without a no-progress termination teaches
 "march in place". A third was run after the baseline: pricing survival up (fall penalty −20) makes
 the agent stop falling by mostly standing — 7.6 s episodes, 21 % completion, still 0 % success — so
-the survival/progress ratio moves the plateau rather than passing it. A scripted open-loop CPG search (2 000+ parameter combinations) also failed to
+the survival/progress ratio moves the plateau rather than passing it. A fourth (`walk-g`) adds an
+opt-in flight-phase penalty and a gait-credit floor for the observed hopping; it reaches the same
+55–59 % ceiling in fewer steps and was stopped early by the operator. Full numbers and the next
+experiments are in `docs/STATUS.md`. A scripted open-loop CPG search (2 000+ parameter combinations) also failed to
 produce a stable gait on this morphology, so the remaining gap looks morphological/actuation-relevant
 as well as sample-budget-relevant. Concrete next steps are listed in
 [docs/STATUS.md](docs/STATUS.md#what-remains-unfinished).

@@ -7,9 +7,9 @@ Phases are ordered to expose physics, measurement, and compute risks before addi
 | Phase | State | Evidence |
 |---|---|---|
 | 0 — Research and foundation | **done** | docs, schema, starter config, 145 passing tests |
-| 1 — One-world physics and measurement | **done** | 25-DoF humanoid, `ParkourEnv`, contact/termination/reward diagnostics, `tests/test_environment.py` (18 tests) |
+| 1 — One-world physics and measurement | **done** | 25-DoF humanoid, `ParkourEnv`, contact/termination/reward diagnostics, `tests/test_environment.py` (22 tests) |
 | 2 — Fixed course suite and reproducible evaluation | **done** | 22 validated levels, deterministic multi-seed evaluation with checkpoint dynamics, `parkour compare`, held-out split |
-| 3 — Small-batch PPO baseline | **done, goal not reached** | PPO trains, resumes, checkpoints and evaluates reproducibly; it learns standing and 14–21 % of level-01 but never completes a course. See [STATUS.md](STATUS.md#learning-status) |
+| 3 — Small-batch PPO baseline | **done, goal not reached** | PPO trains, resumes, checkpoints and evaluates reproducibly; a 5 M-step run learns a hop that covers 47.7 % of level-01 (59 % in its own rolling evaluation) and never completes a course. See [STATUS.md](STATUS.md#learning-status) |
 | 4 — Bounded evolution / experience | **partial** | CEM over 8 knobs works and is tested (`tests/test_research_tools.py`); no experience-retrieval layer, no PBT comparison |
 | 5 — Local 3D research dashboard | **done** | FastAPI + Three.js viewer, run browser, curves, per-level bars, replay playback, comparison, benchmark, validated start/stop; `tests/test_dashboard.py` |
 | 6 — Harness²-style assistant | **done (restricted pilot)** | rule-based proposals over 11 bounded knobs, probe reports, no auto-apply; network planner disabled by default |
@@ -19,7 +19,7 @@ humanoid does not yet walk. The concrete diagnosis and the next experiments are 
 [STATUS.md](STATUS.md#what-remains-unfinished).
 
 
-## Phase 0 — Research and foundation (current)
+## Phase 0 — Research and foundation
 
 **Scope:** source-checked choices, decision log, package boundary, run/level templates and project plan.
 

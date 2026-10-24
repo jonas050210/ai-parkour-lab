@@ -93,6 +93,21 @@ shuffles (48 % of `walk-f` episodes now reach the 10 s cap, terminations flip fr
 `timeout`) — and buys it with progress. Neither setting makes the agent *walk*, so the missing
 ingredient is not a weight on the existing reward terms.
 
+`walk-g` attacks the observed *hopping* directly: it adds an opt-in flight-phase penalty (charged
+while both feet are in the air) and a `gait_speed_floor` so a policy that cannot move yet still
+gets a gradient for stepping. It was stopped by the operator at 3.52 M of its 6 M budget, and what
+it shows is a faster route to the *same* ceiling, not a higher one:
+
+| Steps | `walk-e` rolling eval | `walk-g` rolling eval |
+|---|---|---|
+| 2.01 M | 58.8 % | 53.9 % |
+| 3.48 M | 59.2 % | 47.6 % |
+
+At 3.52 M steps `walk-g` evaluates at 42.1 % over 5 seeds (training-episode mean 45.7 %, 4.63 s,
+85 % `collapsed`) — inside the same band as `walk-e` at the same budget. So the shaping terms are
+worth keeping as tools (they are off by default and unit-tested), but they do not change the
+qualitative result.
+
 **The policy plateaued, so this is not a sample-budget story alone.** Completion sat at 58.8 %
 at 1.68 M steps, 59.4 % at 3.40 M and 58.4 % at 5.0 M: 3.3 M further steps (~30 min of CPU) bought
 nothing. The learned behaviour is a fast, symmetric hop that covers ~3 m in 4.5 s at ~0.8 m/s
@@ -100,6 +115,12 @@ nothing. The learned behaviour is a fast, symmetric hop that covers ~3 m in 4.5 
 (value loss falls, explained variance 0.98, KL 0.016) and the *task* reward is what saturates: with
 `progress 6/m` and `fall_penalty 2`, falling forward after 3 m already pays better than walking
 slowly, and the reward never distinguishes a hopping controller from a walking one.
+
+Where the 5 M-step policy actually breaks down is visible in one rollout: it accelerates to
+1.3 m/s, cruises at 0.8–1.0 m/s, and collapses 0.16 m past the far edge of the 10 cm step
+(`x = 3.56 m`, pelvis height dropping 0.95 → 0.80 m over the last 15 control steps). The
+observation is terrain-conditioned (obstacle-ahead features at indices 25–28), so this is a
+controller tuned to `level-01`'s geometry, not a general gait.
 
 There is **no** walking gait and **no** completed level, so there is nothing to report on levels 3–22
 beyond "the level-01 policy transfers weakly and falls over": the 20-level sweep ends in `fell_over`
@@ -181,8 +202,10 @@ parkour dashboard --port 8000     # http://localhost:8000 → Replay tab
    budget alone (3.3 M extra steps changed nothing). The remaining suspects are reward geometry and
    exploration structure. Concrete next experiments, in the order I would run them:
    * **Reward geometry is exhausted as a lever.** `walk-e` (fall −2) hops 3 m and collapses;
-     `walk-f` (fall −20, survival doubled) stands and shuffles for 7.6 s instead. Both score 0 %.
-     Re-tuning these weights again is not the next move — the missing signal is *how* to step.
+     `walk-f` (fall −20, survival doubled) stands and shuffles for 7.6 s instead; `walk-g`
+     (flight-phase penalty + gait floor) reaches the same 55–59 % ceiling in half the steps. All
+     three score 0 %. Re-tuning these weights again is not the next move — the missing signal is
+     *how* to step, which points at a reference motion rather than at another scalar weight.
    * **Reference gait tracking** instead of pure exploration: the CPG search over ~2 000 open-loop
      parameter sets peaked at 0.36 m, so the reference should come from a scripted quasi-static
      walk validated in the *enclosed* loop, or from a public retargeted mocap clip.
