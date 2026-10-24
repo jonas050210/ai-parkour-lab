@@ -354,6 +354,7 @@ def _build_train_config(args: argparse.Namespace, catalog: LevelCatalog) -> Trai
         keep_checkpoints=args.keep_checkpoints,
         max_minutes=args.max_minutes,
         target_success=args.target_success,
+        stop_on_success=args.stop_on_success,
         reward_scale=args.reward_scale,
         reward=reward,
         reward_start=reward_start,
@@ -385,9 +386,9 @@ def command_train(args: argparse.Namespace) -> int:
         resume_from=args.resume,
     )
     print(json.dumps({key: summary[key] for key in (
-        "run_id", "status", "total_steps", "iterations", "episodes",
-        "best_eval_success", "best_eval_completion", "wall_seconds",
-    ) if key in summary}, indent=2))
+        "run_id", "status", "stop_reason", "total_steps", "iterations", "episodes",
+        "best_eval_success", "best_eval_completion", "first_success", "wall_seconds",
+    ) if key in summary}, indent=2, default=str))
     return 0
 
 
@@ -941,7 +942,17 @@ def build_parser() -> argparse.ArgumentParser:
     train_cmd.add_argument("--max-replays", type=int, default=12)
     train_cmd.add_argument("--replay-every", type=int, default=2)
     train_cmd.add_argument("--max-minutes", type=float, default=None)
-    train_cmd.add_argument("--target-success", type=float, default=None)
+    train_cmd.add_argument(
+        "--target-success",
+        type=float,
+        default=None,
+        help="stop when the best evaluation reaches this success rate (must be > 0)",
+    )
+    train_cmd.add_argument(
+        "--stop-on-success",
+        action="store_true",
+        help="stop at the first episode that completes a course (training or evaluation)",
+    )
     train_cmd.add_argument("--run-id", default=None)
     train_cmd.add_argument("--name", default=None)
     train_cmd.add_argument("--notes", default=None)

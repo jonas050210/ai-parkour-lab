@@ -122,6 +122,17 @@ parkour train --level level-01-basics --all --curriculum adaptive ...
 * `--eval-interval`, `--eval-levels`, `--eval-seeds`, `--eval-episodes`,
   `--checkpoint-interval`, `--keep-checkpoints`, `--max-replays`.
 * `--max-minutes` is a hard wall-clock budget; the trainer checkpoints and exits cleanly.
+* `--stop-on-success` stops the run at the **first episode that completes a course**, whether it
+  came from a rollout or from an evaluation. `--target-success 0.6` stops once the best evaluation
+  reaches 60 %. `--target-success 0` is rejected: the first evaluation sets the best success to 0.0
+  even when nothing succeeded, so it used to stop after one evaluation regardless of the outcome.
+* Every run records *why* it ended in `summary.json`: `stop_reason` is one of `budget`,
+  `first_success`, `target_success`, `max_minutes` or `interrupted`, and `first_success` carries
+  `{source, step, iteration, level_id}` for the episode that finished the course (or `null`).
+
+Bounded protocol used for this project on a CPU-only host: at most 5–6 M steps, `--stop-on-success`
+so a lucky policy is not trained past its first completed course, and `--max-minutes` as the
+wall-clock backstop.
 * `--resume runs/<id>/checkpoints/latest.npz` continues a run (policy, normaliser, optimiser-free
   state, iteration counter and sampler state).
 

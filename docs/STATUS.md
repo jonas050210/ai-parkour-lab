@@ -177,6 +177,8 @@ beyond "the level-01 policy transfers weakly and falls over": the 20-level sweep
 | Finished episodes were labelled with the level assigned for the *next* reset | per-level statistics (and therefore the adaptive curriculum) could be attributed to the wrong level | `test_finished_episode_is_labelled_with_the_level_it_ran` |
 | A successful episode reported ~85 % completion | `completion` is a raw distance ratio while success only needs the finish disc | `test_successful_episode_reports_full_completion` |
 | `env_config_from_checkpoint` hard-coded `randomize_reset=False` | any tool that did not override it replayed three identical "seeds" | `test_diagnose_uses_every_seed` |
+| `--target-success 0` (and any target) stopped the run after the *first evaluation* | "stop at the first success" could not be expressed: the first evaluation sets `best_eval_success` to 0.0 even with zero successes, and `0.0 >= 0.0` ended the run | `test_stop_reason_needs_a_real_success`, `test_stop_on_success_ends_the_run_at_the_first_completed_course` |
+| A run's summary could not say why it ended, and `best_eval_success` was -1.0 before the first evaluation | a bounded or early-stopped run was indistinguishable from a crash in `summary.json` | `test_runs_without_stop_on_success_spend_their_budget` |
 
 ## 6. How to reproduce
 

@@ -448,3 +448,116 @@ def test_evaluation_runs_the_requested_number_of_episodes(catalog: LevelCatalog)
     )
     assert evaluation["aggregate"]["overall"]["episodes"] == 4
     assert len({record["seed"] for record in evaluation["records"]}) == 4
+
+
+def _finish_at_spawn(tmp_path: Path):
+    """A schema-valid level whose finish disc already contains the spawn point."""
+
+    from parkour_lab.levels import DEFAULT_LEVELS_DIR, LevelCatalog, load_level
+
+    data = json.loads((DEFAULT_LEVELS_DIR / "level-01-basics.json").read_text(encoding="utf-8"))
+    data["id"] = "level-00-spawn-finish"
+    data["finish"]["position"] = [0.2, 0.0, 0.92]
+    path = tmp_path / "level-00-spawn-finish.json"
+    path.write_text(json.dumps(data), encoding="utf-8")
+    return LevelCatalog([load_level(path, use_schema=True)])
+
+
+@pytest.fixture(scope="module")
+def spawn_finish_catalog(tmp_path_factory) -> LevelCatalog:
+    return _finish_at_spawn(tmp_path_factory.mktemp("spawn-finish"))
+
+
+def test_stop_reason_needs_a_real_success() -> None:
+    """``target_success=0`` used to mean "stop after the first evaluation", success or not."""
+
+    from parkour_lab.training.runner import stop_reason_for
+
+    config = TrainConfig(total_steps=1000)
+    assert (
+        stop_reason_for(config, best_eval_success=0.0, first_success=None, total_steps=100)
+        is None
+    )
+    stopping = TrainConfig(total_steps=1000, stop_on_success=True)
+    assert (
+        stop_reason_for(stopping, best_eval_success=0.0, first_success=None, total_steps=100)
+        is None
+    )
+    first = {"source": "rollout", "step": 128}
+    assert (
+        stop_reason_for(stopping, best_eval_success=0.0, first_success=first, total_steps=128)
+        == "first_success"
+    )
+    assert (
+        stop_reason_for(stopping, best_eval_success=0.2, first_success=None, total_steps=128)
+        == "first_success"
+    )
+    target = TrainConfig(total_steps=1000, target_success=0.5)
+    assert stop_reason_for(target, best_eval_success=0.4, first_success=first, total_steps=100) is None
+    assert (
+        stop_reason_for(target, best_eval_success=0.5, first_success=None, total_steps=100)
+        == "target_success"
+    )
+    assert (
+        stop_reason_for(config, best_eval_success=0.0, first_success=None, total_steps=1000)
+        == "budget"
+    )
+    with pytest.raises(ValueError):
+        TrainConfig(target_success=0.0)
+
+
+def test_stop_on_success_ends_the_run_at_the_first_completed_course(
+    tmp_path: Path, spawn_finish_catalog: LevelCatalog
+) -> None:
+    """The user-facing protocol: run until one episode finishes the course, then stop."""
+
+    level = spawn_finish_catalog[0]
+    config = TrainConfig(
+        level_ids=(level.id,),
+        curriculum="single",
+        seed=5,
+        total_steps=200_000,
+        rollout_steps=32,
+        num_envs=2,
+        ppo=PPOConfig(epochs=1, minibatch_size=16),
+        eval_interval=1_000,
+        checkpoint_interval=1_000,
+        hidden_dim=16,
+        max_replays=0,
+        record_replay_every_eval=0,
+        stop_on_success=True,
+    )
+    summary = train(config, spawn_finish_catalog, runs_dir=tmp_path / "runs", run_id="stop-early")
+    assert summary["stop_reason"] == "first_success"
+    assert summary["first_success"]["source"] == "rollout"
+    assert summary["first_success"]["step"] <= config.rollout_steps * config.num_envs
+    assert summary["total_steps"] < config.total_steps
+    stored = json.loads((tmp_path / "runs" / "stop-early" / "summary.json").read_text())
+    assert stored["stop_reason"] == "first_success"
+    assert stored["first_success"]["level_id"] == level.id
+    # The interrupt-style status must not regress: the run did stop early on purpose.
+    assert stored["status"] == "stopped_early"
+
+
+def test_runs_without_stop_on_success_spend_their_budget(
+    tmp_path: Path, spawn_finish_catalog: LevelCatalog
+) -> None:
+    level = spawn_finish_catalog[0]
+    config = TrainConfig(
+        level_ids=(level.id,),
+        curriculum="single",
+        seed=5,
+        total_steps=64,
+        rollout_steps=32,
+        num_envs=2,
+        ppo=PPOConfig(epochs=1, minibatch_size=16),
+        eval_interval=1_000,
+        checkpoint_interval=1_000,
+        hidden_dim=16,
+        max_replays=0,
+        record_replay_every_eval=0,
+    )
+    summary = train(config, spawn_finish_catalog, runs_dir=tmp_path / "runs", run_id="no-stop")
+    assert summary["stop_reason"] == "budget"
+    assert summary["first_success"] is not None  # it happened, it just did not stop the run
+    assert summary["status"] == "completed"

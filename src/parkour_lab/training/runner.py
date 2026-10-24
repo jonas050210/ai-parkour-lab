@@ -88,6 +88,10 @@ class TrainConfig:
     record_replay_every_eval: int = 2
     max_minutes: float | None = None
     target_success: float | None = None
+    #: Stop as soon as *any* episode completes the course.  ``target_success=0.0`` cannot
+    #: express this: the first evaluation sets ``best_eval_success`` to 0.0 even when nothing
+    #: succeeded, so ``>= 0.0`` is already true and the run would stop after one evaluation.
+    stop_on_success: bool = False
     reward_scale: float = 0.25
     max_episode_seconds: float | None = None
     stagnation_seconds: float = 0.0
@@ -98,6 +102,13 @@ class TrainConfig:
     initial_log_std: float = -1.0
     notes: str = ""
     name: str = ""
+
+    def __post_init__(self) -> None:
+        if self.target_success is not None and self.target_success <= 0.0:
+            raise ValueError(
+                "target_success must be > 0; use stop_on_success=True to stop at the "
+                "first episode that completes a course"
+            )
 
     # ----------------------------------------------------------------------------------
     def env_config(self, level_id: str) -> EnvConfig:
@@ -143,6 +154,7 @@ class TrainConfig:
             "record_replay_every_eval": self.record_replay_every_eval,
             "max_minutes": self.max_minutes,
             "target_success": self.target_success,
+            "stop_on_success": self.stop_on_success,
             "reward_start": None if self.reward_start is None else self.reward_start.to_dict(),
             "reward_ramp_fraction": self.reward_ramp_fraction,
             "reward_scale": self.reward_scale,
@@ -188,6 +200,7 @@ class TrainConfig:
             target_success=(
                 None if data.get("target_success") is None else float(data["target_success"])
             ),
+            stop_on_success=bool(data.get("stop_on_success", False)),
             reward_start=(
                 None
                 if data.get("reward_start") is None
@@ -207,6 +220,31 @@ class TrainConfig:
             learning_rate=float(data.get("learning_rate", 3e-4)),
             initial_log_std=float(data.get("initial_log_std", -1.0)),
         )
+
+
+def stop_reason_for(
+    config: TrainConfig,
+    *,
+    best_eval_success: float,
+    first_success: dict[str, Any] | None,
+    total_steps: int,
+) -> str | None:
+    """Why the loop should stop after this iteration, or ``None`` to keep going.
+
+    ``stop_on_success`` means "the first episode that completes the course", not
+    "success rate >= 0": the distinction matters because an evaluation that ran and found
+    nothing must not be mistaken for a success.
+    """
+
+    if config.stop_on_success and (
+        first_success is not None or best_eval_success > 0.0
+    ):
+        return "first_success"
+    if config.target_success is not None and best_eval_success >= config.target_success:
+        return "target_success"
+    if total_steps >= config.total_steps:
+        return "budget"
+    return None
 
 
 class TrainingRunner:
@@ -252,6 +290,8 @@ class TrainingRunner:
         self._eval_counter = 0
         self._checkpoint_files: list[Path] = []
         self._last_eval: dict[str, Any] | None = None
+        self.first_success: dict[str, Any] | None = None
+        self.stop_reason: str = "budget"
         self._stopped = False
         self._resume_path = Path(resume_from) if resume_from is not None else None
         self._active_reward = config.reward
@@ -340,6 +380,7 @@ class TrainingRunner:
         try:
             while self.total_steps < config.total_steps:
                 if deadline is not None and time.monotonic() > deadline:
+                    self.stop_reason = "max_minutes"
                     self.logger(f"stopping: max_minutes={config.max_minutes} reached")
                     break
                 iteration_start = time.monotonic()
@@ -400,15 +441,33 @@ class TrainingRunner:
                 if self.iteration % config.checkpoint_interval == 0:
                     self.save_checkpoint("latest")
                     self.save_checkpoint(f"iter_{self.iteration:05d}")
-                if config.target_success is not None and self.best_eval_success >= config.target_success:
-                    self.logger(
-                        f"target success {config.target_success:.2f} reached at "
-                        f"{self.total_steps:,} steps"
-                    )
+                reason = stop_reason_for(
+                    config,
+                    best_eval_success=self.best_eval_success,
+                    first_success=self.first_success,
+                    total_steps=self.total_steps,
+                )
+                if reason is not None:
+                    self.stop_reason = reason
+                    if reason == "first_success":
+                        where = (
+                            "a training episode"
+                            if (self.first_success or {}).get("source") == "rollout"
+                            else "evaluation"
+                        )
+                        self.logger(
+                            f"stopping: first success ({where}) at {self.total_steps:,} steps"
+                        )
+                    elif reason == "target_success":
+                        self.logger(
+                            f"target success {config.target_success:.2f} reached at "
+                            f"{self.total_steps:,} steps"
+                        )
                     break
         except KeyboardInterrupt:
             self.logger("interrupted: saving checkpoint and summary")
             self._stopped = True
+            self.stop_reason = "interrupted"
         finally:
             self.save_checkpoint("latest")
             summary = self._final_summary()
@@ -492,6 +551,17 @@ class TrainingRunner:
                 episode_returns.append(float(episode.get("episode_return", 0.0)))
                 episode_lengths.append(float(episode.get("sim_steps", 0)))
                 successes += int(bool(episode.get("success", False)))
+                if episode.get("success") and self.first_success is None:
+                    self.first_success = {
+                        "source": "rollout",
+                        "step": self.total_steps,
+                        "iteration": self.iteration + 1,
+                        "level_id": episode.get("level_id"),
+                    }
+                    self.logger(
+                        f"first success: rollout episode on {episode.get('level_id')} "
+                        f"(iteration {self.iteration + 1}, {self.total_steps:,} steps)"
+                    )
                 completions.append(float(episode.get("completion_fraction", 0.0)))
                 self.sampler.update(
                     episode["level_id"],
@@ -581,6 +651,13 @@ class TrainingRunner:
                 "levels": ";".join(self.eval_levels),
             }
         )
+        if overall["success_rate"] > 0.0 and self.first_success is None:
+            self.first_success = {
+                "source": "eval",
+                "step": self.total_steps,
+                "iteration": self.iteration,
+                "level_id": ";".join(self.eval_levels),
+            }
         score = overall["success_rate"] + 0.25 * overall["mean_completion"]
         if score > self.best_score:
             self.best_score = score
@@ -737,8 +814,13 @@ class TrainingRunner:
             "total_steps": self.total_steps,
             "iterations": self.iteration,
             "episodes": self.episodes,
-            "best_eval_success": self.best_eval_success,
-            "best_eval_completion": self.best_eval_completion,
+            # No evaluation yet is not "zero success": report nothing rather than -1.
+            "best_eval_success": None if self.best_eval_success < 0 else self.best_eval_success,
+            "best_eval_completion": (
+                None if self.best_eval_completion < 0 else self.best_eval_completion
+            ),
+            "stop_reason": self.stop_reason,
+            "first_success": self.first_success,
             "last_eval": overall,
             "final_success_rate": overall.get("success_rate"),
             "final_mean_completion": overall.get("mean_completion"),
