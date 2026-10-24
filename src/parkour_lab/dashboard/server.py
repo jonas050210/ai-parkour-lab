@@ -291,6 +291,8 @@ REWARD_BOUNDS = {
     "forward_velocity_per_second": (-20.0, 40.0),
     "forward_velocity_target": (0.1, 5.0),
     "gait_per_second": (0.0, 40.0),
+    "gait_speed_floor": (0.0, 1.0),
+    "flight_penalty_per_second": (0.0, 40.0),
     "alive_per_second": (-5.0, 20.0),
     "upright_per_second": (-5.0, 20.0),
     "height_per_second": (-5.0, 20.0),

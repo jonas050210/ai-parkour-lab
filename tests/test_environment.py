@@ -472,3 +472,55 @@ def test_rollout_episode_matches_a_manual_loop(catalog: LevelCatalog) -> None:
     assert record["termination_reason"] == manual["termination_reason"]
     assert record["completion_fraction"] == pytest.approx(manual["completion_fraction"])
     assert record["episode_return"] == pytest.approx(manual["episode_return"])
+
+
+def test_flight_penalty_punishes_hopping(catalog: LevelCatalog) -> None:
+    """A hop (both feet up) must cost reward; the same step with a foot down must not."""
+
+    level = catalog["level-01-basics"]
+    fined = RewardConfig(flight_penalty_per_second=3.0)
+    env = ParkourEnv(level, EnvConfig(level_id=level.id, randomize_reset=False))
+    fining = ParkourEnv(
+        level, EnvConfig(level_id=level.id, randomize_reset=False, reward=fined)
+    )
+    try:
+        env.reset(seed=2)
+        fining.reset(seed=2)
+        dt = fining.config.control_dt
+        airborne = fining._reward_components(0.0, 0.0, 0.0, (False, False))
+        grounded = fining._reward_components(0.0, 0.0, 0.0, (True, False))
+        assert airborne["flight"] == pytest.approx(-3.0 * dt)
+        assert grounded["flight"] == pytest.approx(0.0)
+        # The term is off by default, so every existing recipe is unchanged.
+        default = env._reward_components(0.0, 0.0, 0.0, (False, False))
+        assert "flight" not in default
+    finally:
+        env.close()
+        fining.close()
+
+
+def test_gait_credit_gate_and_optional_floor(catalog: LevelCatalog) -> None:
+    """Stepping credit needs forward motion, unless a floor is configured for bootstrap."""
+
+    level = catalog["level-01-basics"]
+    target = RewardConfig().forward_velocity_target
+    strict = ParkourEnv(
+        level, EnvConfig(level_id=level.id, reward=RewardConfig(gait_per_second=5.0))
+    )
+    floored = ParkourEnv(
+        level,
+        EnvConfig(
+            level_id=level.id,
+            reward=RewardConfig(gait_per_second=5.0, gait_speed_floor=0.25),
+        ),
+    )
+    try:
+        assert strict._gait_credit_factor(0.0) == pytest.approx(0.0)
+        assert strict._gait_credit_factor(target) == pytest.approx(1.0)
+        assert strict._gait_credit_factor(10 * target) == pytest.approx(1.0)
+        assert floored._gait_credit_factor(0.0) == pytest.approx(0.25)
+        assert floored._gait_credit_factor(target / 2) == pytest.approx(0.5)
+        assert floored._gait_credit_factor(target) == pytest.approx(1.0)
+    finally:
+        strict.close()
+        floored.close()

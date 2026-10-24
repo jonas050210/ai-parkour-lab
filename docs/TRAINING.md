@@ -74,6 +74,8 @@ or the dashboard's API without editing code.
 | `forward_velocity_per_second` | 0.0 | `min(vx / target, 1)`, target `forward_velocity_target=1.2` |
 | `forward_velocity_target` | 1.2 m/s | saturating speed used by the velocity and gait terms |
 | `gait_per_second` | 0.0 | credits a clean left/right foot exchange, gated on forward speed |
+| `gait_speed_floor` | 0.0 | lowest gate value used for gait credit; raise it (e.g. 0.25) to bootstrap stepping in a policy that cannot move yet |
+| `flight_penalty_per_second` | 0.0 | charged while *both* feet are off the ground, so a hop is not mistaken for a step |
 | `alive_per_second` | 1.0 | survival |
 | `upright_per_second` | 0.5 | torso orientation (zero below a 0.55 up-vector) |
 | `height_per_second` | 1.0 | closeness to the standing pelvis height above the support |

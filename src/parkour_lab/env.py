@@ -108,6 +108,8 @@ class RewardConfig:
     forward_velocity_per_second: float = 0.0
     forward_velocity_target: float = 1.2
     gait_per_second: float = 0.0
+    gait_speed_floor: float = 0.0
+    flight_penalty_per_second: float = 0.0
     alive_per_second: float = 1.0
     upright_per_second: float = 0.5
     height_per_second: float = 1.0
@@ -599,17 +601,13 @@ class ParkourEnv:
             self._air_steps += 1
 
         self._track_progress()
-        components = self._reward_components(support, contact_force, saturation)
+        components = self._reward_components(support, contact_force, saturation, foot_state)
         gait = self._gait_event(foot_state)
         if gait:
-            # Credit for stepping is gated on forward motion so that marching in place
-            # cannot farm the gait term; a floor of 0.25 keeps the gradient alive while the
-            # policy still has to learn to move at all.
-            speed = float(self.data.qvel[0])
-            target = max(self.config.reward.forward_velocity_target, 1e-6)
-            factor = min(max(speed / target, 0.0), 1.0)
             components["gait"] = (
-                self.config.reward.gait_per_second * self.config.control_dt * factor
+                self.config.reward.gait_per_second
+                * self.config.control_dt
+                * self._gait_credit_factor(float(self.data.qvel[0]))
             )
         terminated, truncated, reason = self._check_done(support, hazard_hit)
         reward = float(sum(components.values()))
@@ -843,7 +841,11 @@ class ParkourEnv:
         return _clip(fraction, 0.0, 1.0)
 
     def _reward_components(
-        self, support: float, contact_force: float, saturation: float
+        self,
+        support: float,
+        contact_force: float,
+        saturation: float,
+        foot_state: tuple[bool, bool] = (False, False),
     ) -> dict[str, float]:
         cfg = self.config.reward
         dt = self.config.control_dt
@@ -869,9 +871,27 @@ class ParkourEnv:
             "joint_velocity": -cfg.joint_velocity_penalty * float(np.mean(qvel**2)),
             "lateral_drift": -cfg.lateral_drift_penalty * dt * abs(float(self.data.qvel[1])),
         }
+        if cfg.flight_penalty_per_second:
+            # A hop is not a step: punish the flight phase so the policy cannot convert
+            # "push off and fall forward" into a locomotion strategy.
+            both_feet_up = not foot_state[0] and not foot_state[1]
+            components["flight"] = -cfg.flight_penalty_per_second * dt * float(both_feet_up)
         if saturation > 0:
             components["saturation"] = -0.01 * saturation
         return components
+
+    def _gait_credit_factor(self, speed: float) -> float:
+        """How much of a gait event is paid out, given the forward speed.
+
+        Credit for stepping is gated on forward motion so that marching in place cannot farm
+        the gait term.  ``gait_speed_floor`` raises the gate for a policy that cannot move yet
+        (it is 0 by default, i.e. the strict behaviour every earlier recipe used).
+        """
+
+        target = max(self.config.reward.forward_velocity_target, 1e-6)
+        factor = min(max(speed / target, 0.0), 1.0)
+        floor = min(max(self.config.reward.gait_speed_floor, 0.0), 1.0)
+        return max(factor, floor)
 
     def _gait_event(self, foot_state: tuple[bool, bool]) -> bool:
         """A "gait event" is a clean exchange of which foot is bearing load.
